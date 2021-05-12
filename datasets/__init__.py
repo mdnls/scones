@@ -1,7 +1,7 @@
 import os
 import torch
 import torchvision.transforms as transforms
-from torchvision.datasets import CIFAR10, LSUN
+from torchvision.datasets import CIFAR10, LSUN, MNIST, USPS
 from datasets.celeba import CelebA
 from datasets.ffhq import FFHQ
 from datasets.gaussian import Gaussian
@@ -130,55 +130,61 @@ def get_dataset(args, config):
 
     elif config.data.dataset == "MNIST":
         if config.data.random_flip:
-            dataset = torch.datasets.MNIST(root=os.path.join('datasets', 'MNIST'),
+            dataset = MNIST(root=os.path.join('datasets', 'MNIST'),
                                            train=True,
                                            download=True,
                                            transform=transforms.Compose([
                                                transforms.RandomHorizontalFlip(p=0.5),
-                                               transforms.ToTensor()
-                                           ]), resolution=config.data.image_size)
+                                               transforms.ToTensor(),
+                                               transforms.Resize(config.data.image_size)
+                                           ]))
         else:
-            dataset = torch.datasets.MNIST(root=os.path.join('datasets', 'MNIST'),
+            dataset = MNIST(root=os.path.join('datasets', 'MNIST'),
                                            train=True,
                                            download=True,
                                            transform=transforms.Compose([
-                                               transforms.ToTensor()
-                                           ]), resolution=config.data.image_size)
-        test_dataset = torch.datasets.MNIST(root=os.path.join('datasets', 'MNIST'),
+                                               transforms.ToTensor(),
+                                               transforms.Resize(config.data.image_size)
+                                           ]))
+        test_dataset = MNIST(root=os.path.join('datasets', 'MNIST'),
                                            train=False,
                                            download=True,
                                            transform=transforms.Compose([
-                                               transforms.ToTensor()
-                                           ]), resolution=config.data.image_size)
+                                               transforms.ToTensor(),
+                                               transforms.Resize(config.data.image_size)
+                                           ]))
 
     elif config.data.dataset == "USPS":
         if config.data.random_flip:
-            dataset = torch.datasets.USPS(root=os.path.join('datasets', 'USPS'),
+            dataset = USPS(root=os.path.join('datasets', 'USPS'),
                                            train=True,
                                            download=True,
                                            transform=transforms.Compose([
                                                transforms.Resize(20), # resize and pad like MNIST
                                                transforms.Pad(4),
                                                transforms.RandomHorizontalFlip(p=0.5),
-                                               transforms.ToTensor()
-                                           ]), resolution=config.data.image_size)
+                                               transforms.ToTensor(),
+                                               transforms.Resize(config.data.image_size)
+                                           ]))
         else:
-            dataset = torch.datasets.USPS(root=os.path.join('datasets', 'USPS'),
+            dataset = USPS(root=os.path.join('datasets', 'USPS'),
                                            train=True,
                                            download=True,
                                            transform=transforms.Compose([
                                                transforms.Resize(20), # resize and pad like MNIST
                                                transforms.Pad(4),
-                                               transforms.ToTensor()
-                                           ]), resolution=config.data.image_size)
-        test_dataset = torch.datasets.USPS(root=os.path.join('datasets', 'USPS'),
+                                               transforms.ToTensor(),
+                                               transforms.Resize(config.data.image_size)
+                                           ]))
+        test_dataset = USPS(root=os.path.join('datasets', 'USPS'),
                                             train=False,
                                             download=True,
                                             transform=transforms.Compose([
                                                 transforms.Resize(20),  # resize and pad like MNIST
                                                 transforms.Pad(4),
-                                                transforms.ToTensor()
-                                            ]), resolution=config.data.image_size)
+                                                transforms.ToTensor(),
+                                                transforms.Resize(config.data.image_size)
+                                            ]))
     return dataset, test_dataset
 
 def get_synthetic_dataset(args, config):

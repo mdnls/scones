@@ -29,6 +29,8 @@ def get_model(config):
         return NCSNv2Deepest(config).to(config.device)
     elif config.data.dataset == 'LSUN':
         return NCSNv2Deeper(config).to(config.device)
+    elif config.data.dataset == 'MNIST':
+        return NCSN(config).to(config.device)
 
 class NCSNRunner():
     def __init__(self, args, config):

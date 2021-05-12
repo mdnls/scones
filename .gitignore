@@ -1,0 +1,8 @@
+pretrained
+data
+.idea
+.DS_Store
+*.pyc
+__pycache__
+.vscode
+

@@ -1,0 +1,45 @@
+source:
+  data:
+    dataset: "USPS"
+    image_size: 28
+    channels: 1
+    logit_transform: false
+    uniform_dequantization: false
+    gaussian_dequantization: false
+    random_flip: true
+    rescaled: false
+    num_workers: 12
+
+target:
+  data:
+    dataset: "MNIST"
+    image_size: 28
+    channels: 1
+    logit_transform: false
+    uniform_dequantization: false
+    gaussian_dequantization: false
+    random_flip: true
+    rescaled: false
+    num_workers: 0
+
+transport:
+  regularization: "entropy" # l2, entropy
+  coeff: 0.05
+  cost: "mean-l2-sq" # l2-sq, mean-l2-sq
+
+optim:
+  weight_decay: 0.000
+  optimizer: "Adam"
+  lr: 0.00001
+  beta1: 0.9
+  amsgrad: false
+  eps: 0.00000001
+
+model:
+  architecture: "fcn"
+  hidden_layers: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]
+
+training:
+  batch_size: 500
+  n_iters: 5001
+  snapshot_freq: 5000

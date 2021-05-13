@@ -1,0 +1,51 @@
+compatibility:
+  log_path: pretrained/compatibility/gaussians
+  ckpt_id: 5000
+  model:
+    architecture: "fcn"
+    hidden_layers: [2048, 2048, 2048]
+
+source:
+  data:
+    dataset: "Gaussian"
+    isotropic: false
+    dim: 2
+    rank: 2
+    mean: [-2, -2]
+    cov: [[1, 0], [0, 1]] # [[4, -1], [-1, 3]]
+    logit_transform: false
+    uniform_dequantization: false
+    gaussian_dequantization: false
+    random_flip: false
+    rescaled: false
+    num_workers: 12
+
+target:
+  data:
+    dataset: "Gaussian"
+    isotropic: false
+    dim: 2
+    rank: 2
+    mean: [2, 2]
+    cov: [[1, 0], [0, 1]] # [[4, 1], [1, 3]]
+    logit_transform: false
+    uniform_dequantization: false
+    gaussian_dequantization: false
+    random_flip: false
+    rescaled: false
+    num_workers: 12
+
+transport:
+  regularization: "entropy" # l2, entropy
+  coeff: 1
+  cost: "l2-sq" # l2-sq, mean-l2-sq
+
+ncsn:
+  sampling:
+    sources_per_batch: 8
+    samples_per_source: 8
+    data_init: false
+    step_lr: 0.005
+    n_steps_each: 1000
+    final_only: true
+    denoise: true

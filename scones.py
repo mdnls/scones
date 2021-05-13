@@ -10,6 +10,7 @@ import copy
 from scones.runners import *
 
 import os
+from scones.runners import GaussianRunner
 
 
 def parse_args_and_config():
@@ -103,7 +104,10 @@ def main():
     print("<" * 80)
 
     try:
-        runner = SCONESRunner(args, config)
+        if(config.target.data.dataset.upper() == "GAUSSIAN"):
+            runner = GaussianRunner(args, config)
+        else:
+            runner = SCONESRunner(args, config)
         runner.sample()
     except:
         logging.error(traceback.format_exc())

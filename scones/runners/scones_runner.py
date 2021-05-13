@@ -9,14 +9,10 @@ from torch.utils.data import DataLoader
 from ncsn.models.ncsnv2 import NCSNv2Deeper, NCSNv2, NCSNv2Deepest
 from ncsn.models.ncsn import NCSN, NCSNdeeper
 from datasets import get_dataset, data_transform, inverse_data_transform
-from scones.models.langevin_dynamics import (anneal_Langevin_dynamics,
+from scones.models import (anneal_Langevin_dynamics,
                                                anneal_Langevin_dynamics_inpainting,
                                                anneal_Langevin_dynamics_interpolation)
-'''
-from ncsn.models import (anneal_Langevin_dynamics,
-                    anneal_Langevin_dynamics_inpainting,
-                    anneal_Langevin_dynamics_interpolation)
-                    '''
+
 from ncsn.models import get_sigmas
 from ncsn.models.ema import EMAHelper
 from compatibility.models import get_compatibility as _get_compatibility
@@ -228,7 +224,6 @@ class SCONESRunner():
                                                        denoise=self.config.ncsn.sampling.denoise)
                 '''
                 all_samples = torch.stack(all_samples, dim=0)
-                np.save("all_samples.npy", all_samples.detach().cpu().numpy())
 
                 if not self.config.ncsn.sampling.final_only:
                     all_samples = all_samples.view((-1,

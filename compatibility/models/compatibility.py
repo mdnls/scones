@@ -4,9 +4,9 @@ import numpy as np
 
 def get_cost(transport):
     if(transport == "l2-sq"):
-        c = lambda x, y: torch.sum((x-y)**2, dim=(1, 2, 3))[:, None]
+        c = lambda x, y: torch.sum((x.flatten(start_dim=1) - y.flatten(start_dim=1))**2, dim=1)[:, None]
     elif(transport == "mean-l2-sq"):
-        c = lambda x, y: torch.mean((x - y) ** 2, dim=(1, 2, 3))[:, None]
+        c = lambda x, y: torch.mean((x.flatten(start_dim=1) - y.flatten(start_dim=1)) ** 2, dim=1)[:, None]
     else:
         raise ValueError(f"{transport} is not a valid choice of transport metric.")
     return c

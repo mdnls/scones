@@ -20,12 +20,12 @@ class CpatRunner():
     def train(self):
         source_dataset, source_test_dataset = get_dataset(self.args, self.config.source)
         source_loader = DataLoader(source_dataset, batch_size=self.config.training.batch_size,
-                                   shuffle=True, num_workers = self.config.source.data.num_workers, drop_last=True)
+                                   shuffle=True, num_workers=self.config.source.data.num_workers, drop_last=True)
         source_batches = iter(source_loader)
 
         target_dataset, target_test_dataset = get_dataset(self.args, self.config.target)
         target_loader = DataLoader(target_dataset, batch_size=self.config.training.batch_size,
-                                   shuffle=True, num_workers = self.config.target.data.num_workers, drop_last=True)
+                                   shuffle=True, num_workers=self.config.target.data.num_workers, drop_last=True)
         target_batches = iter(target_loader)
 
         cpat = get_compatibility(self.config)

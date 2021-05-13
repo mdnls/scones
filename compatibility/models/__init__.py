@@ -4,13 +4,19 @@ from .imagecritic import *
 from .simple import *
 
 def get_compatibility(config):
-    source_shape = (config.source.data.channels,
-                    config.source.data.image_size,
-                    config.source.data.image_size)
+    if(config.source.data.dataset.upper() == "GAUSSIAN"):
+        source_shape = (config.source.data.dim, 1, 1)
+    else:
+        source_shape = (config.source.data.channels,
+                        config.source.data.image_size,
+                        config.source.data.image_size)
 
-    target_shape = (config.target.data.channels,
-                    config.target.data.image_size,
-                    config.target.data.image_size)
+    if(config.target.data.dataset.upper() == "GAUSSIAN"):
+        target_shape = (config.target.data.dim, 1, 1)
+    else:
+        target_shape = (config.target.data.channels,
+                        config.target.data.image_size,
+                        config.target.data.image_size)
 
     if(config.model.architecture.upper() == "FCN"):
         source_critic = FCImageCritic(input_im_size = source_shape[1],

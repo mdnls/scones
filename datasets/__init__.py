@@ -8,28 +8,29 @@ from datasets.gaussian import Gaussian
 from torch.utils.data import Subset
 import numpy as np
 
-def get_dataset(args, config):
-    if config.data.random_flip is False:
-        tran_transform = test_transform = transforms.Compose([
-            transforms.Resize(config.data.image_size),
-            transforms.ToTensor()
-        ])
-    else:
-        tran_transform = transforms.Compose([
-            transforms.Resize(config.data.image_size),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ToTensor()
-        ])
-        test_transform = transforms.Compose([
-            transforms.Resize(config.data.image_size),
-            transforms.ToTensor()
-        ])
 
+def get_dataset(args, config):
     if config.data.dataset == 'CIFAR10':
-        dataset = CIFAR10(os.path.join('datasets', 'cifar10'), train=True, download=True,
-                          transform=tran_transform)
-        test_dataset = CIFAR10(os.path.join('datasets', 'cifar10_test'), train=False, download=True,
-                               transform=test_transform)
+        if(config.data.random_flip):
+            dataset = CIFAR10(os.path.join('datasets', 'cifar10'), train=True, download=True,
+                              transform= transforms.Compose([
+                                transforms.Resize(config.data.image_size),
+                                transforms.RandomHorizontalFlip(p=0.5),
+                                transforms.ToTensor()]))
+            test_dataset = CIFAR10(os.path.join('datasets', 'cifar10_test'), train=False, download=True,
+                                   transform=transforms.Compose([
+                                    transforms.Resize(config.data.image_size),
+                                    transforms.ToTensor()]))
+
+        else:
+            dataset = CIFAR10(os.path.join('datasets', 'cifar10'), train=True, download=True,
+                              transform= transforms.Compose([
+                                transforms.Resize(config.data.image_size),
+                                transforms.ToTensor()]))
+            test_dataset = CIFAR10(os.path.join('datasets', 'cifar10_test'), train=False, download=True,
+                                   transform=transforms.Compose([
+                                transforms.Resize(config.data.image_size),
+                                transforms.ToTensor()]))
 
     elif config.data.dataset == 'CELEBA':
         if config.data.random_flip:
@@ -153,7 +154,6 @@ def get_dataset(args, config):
                                                transforms.ToTensor(),
                                                transforms.Resize(config.data.image_size)
                                            ]))
-
     elif config.data.dataset == "USPS":
         if config.data.random_flip:
             dataset = USPS(root=os.path.join('datasets', 'USPS'),
@@ -185,21 +185,18 @@ def get_dataset(args, config):
                                                 transforms.ToTensor(),
                                                 transforms.Resize(config.data.image_size)
                                             ]))
-    return dataset, test_dataset
-
-def get_synthetic_dataset(args, config):
-    if(config.data.dataset.upper() == "GAUSSIAN"):
-        if(config.data.dataset.identity):
+    elif(config.data.dataset.upper() == "GAUSSIAN"):
+        if(config.data.isotropic):
             dim = config.data.dataset.dim
             rank = config.data.dataset.rank
             cov = np.diag( np.pad(np.ones((rank,)), [(0, dim - rank)]) )
             mean = np.zeros((dim,))
         else:
-            cov = np.load(config.data.dataset.covariance_path)
-            mean = np.load(config.data.dataset.mean_path)
-        train_dataset = Gaussian(cov=cov, mean=mean)
+            cov = np.array(config.data.cov)
+            mean = np.array(config.data.mean)
+        dataset = Gaussian(cov=cov, mean=mean)
         test_dataset = Gaussian(cov=cov, mean=mean)
-    return train_dataset, test_dataset
+    return dataset, test_dataset
 
 def logit_transform(image, lam=1e-6):
     image = lam + (1 - 2 * lam) * image
@@ -219,7 +216,7 @@ def data_transform(config, X):
     if hasattr(config, 'image_mean'):
         return X - config.image_mean.to(X.device)[None, ...]
 
-    return X
+    return X.float()
 
 def inverse_data_transform(config, X):
     if hasattr(config, 'image_mean'):

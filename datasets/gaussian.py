@@ -1,6 +1,7 @@
 import torch
 import torch.utils.data as data
 from scipy.stats import multivariate_normal
+import numpy as np
 
 class Gaussian(data.Dataset):
     _repr_indent = 4
@@ -11,10 +12,11 @@ class Gaussian(data.Dataset):
         self.dist = multivariate_normal(mean=self.mean, cov=self.cov, allow_singular=True, seed=2039)
 
     def __getitem__(self, index):
-        return self.dist.rvs(size=(1,)).reshape((-1, 1, 1)) # Return in the format of a 1x1 px image.
+        # Return in the format of a 1x1 px image.
+        return self.dist.rvs(size=(1,)).reshape((-1, 1, 1)).astype(np.float), 0
 
     def __len__(self):
-        return 1e+6
+        return int(1e+6)
 
     def __repr__(self):
         head = "Dataset " + self.__class__.__name__

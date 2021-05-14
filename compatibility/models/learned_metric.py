@@ -1,6 +1,6 @@
-from compatibility.models import get_cost
 from facenet_pytorch import InceptionResnetV1
 import torch.nn as nn
+import torch
 from datasets import inverse_data_transform
 
 
@@ -19,7 +19,11 @@ class LearnedMetric(nn.Module):
         assert repr_cost in ['l2-sq', 'mean-l2-sq'], f"{repr_cost} is an invalid choice of repr_cost."
         self.repr_source = repr_source
         self.repr_target = repr_target
-        self.repr_cost = get_cost(repr_cost)
+
+        if (repr_cost == "l2-sq"):
+            self.repr_cost = lambda x, y: torch.sum((x.flatten(start_dim=1) - y.flatten(start_dim=1)) ** 2, dim=1)[:, None]
+        elif (repr_cost == "mean-l2-sq"):
+            self.repr_cost = lambda x, y: torch.mean((x.flatten(start_dim=1) - y.flatten(start_dim=1)) ** 2, dim=1)[:, None]
 
     def forward(self, x, y):
         return self.repr_cost(self.repr_source(x), self.repr_target(y))
@@ -37,15 +41,21 @@ class FacenetMetric(nn.Module):
         super(FacenetMetric, self).__init__()
         self.resnet = InceptionResnetV1(pretrained="vggface2").eval()
         self.resize = nn.Upsample(size=160, mode="bilinear", align_corners=True) # 160px is default image size
-        self.metric = LearnedMetric(repr_source=self.repr, repr_target=self.repr, repr_cost='mean-l2-sq')
+        self.metric = LearnedMetric(repr_source=self._repr_source, repr_target=self._repr_target, repr_cost='mean-l2-sq')
         self.config = config
 
-    def preprocess(self, img_batch):
-        resized_batch = self.resize(img_batch)
-        return 2 * inverse_data_transform(self.config, resized_batch) - 1
+    def preprocess(self, img_batch, is_source):
+        if(is_source):
+            resized_batch = inverse_data_transform(self.config.source, self.resize(img_batch))
+        else:
+            resized_batch = inverse_data_transform(self.config.target, self.resize(img_batch))
+        return 2 * resized_batch - 1
 
-    def repr(self, img_batch):
-        return self.resnet(self.preprocess(img_batch))
+    def _repr_source(self, img_batch):
+        return self.resnet(self.preprocess(img_batch, is_source=True))
+
+    def _repr_target(self, img_batch):
+        return self.resnet(self.preprocess(img_batch, is_source=False))
 
     def forward(self, x, y):
         return self.metric(x, y)

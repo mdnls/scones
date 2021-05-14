@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from compatibility.models.learned_metric import FacenetMetric
+from compatibility.models.special_metrics import FacenetMetric
 
 def get_cost(config):
     cost = config.transport.cost

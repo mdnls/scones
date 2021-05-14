@@ -59,3 +59,34 @@ class FacenetMetric(nn.Module):
 
     def forward(self, x, y):
         return self.metric(x, y)
+
+class FacenetMetric(nn.Module):
+    def __init__(self, config):
+        '''
+        A learned metric between distances which computes a Euclidean distance between a learned representation for each
+            image.
+
+        Args:
+            repr_cost: Euclidean cost to use between learned image representations. One of ['l2-sq', 'mean-l2-sq'].
+        '''
+        super(FacenetMetric, self).__init__()
+        self.resnet = InceptionResnetV1(pretrained="vggface2").eval()
+        self.resize = nn.Upsample(size=160, mode="bilinear", align_corners=True) # 160px is default image size
+        self.metric = LearnedMetric(repr_source=self._repr_source, repr_target=self._repr_target, repr_cost='mean-l2-sq')
+        self.config = config
+
+    def preprocess(self, img_batch, is_source):
+        if(is_source):
+            resized_batch = inverse_data_transform(self.config.source, self.resize(img_batch))
+        else:
+            resized_batch = inverse_data_transform(self.config.target, self.resize(img_batch))
+        return 2 * resized_batch - 1
+
+    def _repr_source(self, img_batch):
+        return self.resnet(self.preprocess(img_batch, is_source=True))
+
+    def _repr_target(self, img_batch):
+        return self.resnet(self.preprocess(img_batch, is_source=False))
+
+    def forward(self, x, y):
+        return self.metric(x, y)

@@ -39,8 +39,8 @@ ncsn:
     log_path: pretrained/ncsn/celeba
     sources_per_batch: 8
     samples_per_source: 8
-    data_init: false
-    step_lr: 0.0000001
+    data_init: true
+    step_lr: 0.000001
     n_steps_each: 10
     ckpt_id: 210000
     final_only: true
@@ -62,7 +62,7 @@ ncsn:
     ensemble: false
 
   model:
-    sigma_begin: 90
+    sigma_begin: 1
     num_classes: 500
     ema: true
     ema_rate: 0.999

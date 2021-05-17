@@ -24,8 +24,8 @@ target:
 
 transport:
   regularization: "entropy" # l2, entropy
-  coeff: 0.07
-  cost: "mean-l2-sq" # l2-sq, mean-l2-sq
+  coeff: 0.005
+  cost: "lowres-8px"
 
 optim:
   weight_decay: 0.000
@@ -40,6 +40,6 @@ model:
   hidden_layers: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]
 
 training:
-  batch_size: 500
+  batch_size: 1000
   n_iters: 5001
   snapshot_freq: 5000

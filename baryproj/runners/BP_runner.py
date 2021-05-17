@@ -4,17 +4,16 @@ from tqdm import tqdm
 import torch.nn.functional as F
 import logging
 import torch
+import torchvision
 import os
 from torchvision.utils import make_grid, save_image
 from torch.utils.data import DataLoader
 from datasets import get_dataset, data_transform, inverse_data_transform
-from compatibility.models import get_compatibility, get_cost
+from scones.runners.scones_runner import get_compatibility
+from baryproj.models import get_bary
 from ncsn.losses import get_optimizer
 
 __all__ = ['BPRunner']
-
-def get_bary(config):
-    ...
 
 class BPRunner():
     def __init__(self, args, config):
@@ -35,9 +34,9 @@ class BPRunner():
         target_batches = iter(target_loader)
 
         if self.config.compatibility.ckpt_id is None:
-            states = torch.load(os.path.join(self.config.compatibility.log_path, 'checkpoint.pth'), map_location=self.config.device)
+            states = torch.load(os.path.join('baryproj', self.config.compatibility.log_path, 'checkpoint.pth'), map_location=self.config.device)
         else:
-            states = torch.load(os.path.join(self.config.compatibility.log_path, f'checkpoint_{self.config.sampling.ckpt_id}.pth'),
+            states = torch.load(os.path.join('baryproj', self.config.compatibility.log_path, f'checkpoint_{self.config.compatibility.ckpt_id}.pth'),
                                 map_location=self.config.device)
 
         cpat = get_compatibility(self.config)
@@ -73,7 +72,7 @@ class BPRunner():
                 Xt = data_transform(self.config.target, Xt)
                 Xt = Xt.to(self.config.device)
 
-                obj = bp_opt.step(lambda: self._bp_closure(Xs, Xt, cpat, bp_opt))
+                obj = bp_opt.step(lambda: self._bp_closure(Xs, Xt, cpat, baryproj, bp_opt))
 
                 obj_val = round(obj.item(), 5)
                 progress.update(1)
@@ -81,6 +80,14 @@ class BPRunner():
                 self.config.tb_logger.add_scalars('Optimization', {
                     'Objective': obj_val
                 }, d_step)
+
+                if(d_step % self.config.training.sample_freq == 0):
+                    with torch.no_grad():
+                        samples = baryproj(Xs)
+                    img_grid1 = torchvision.utils.make_grid(torch.clamp(samples, 0, 1))
+                    img_grid2 = torchvision.utils.make_grid(torch.clamp(Xs, 0, 1))
+                    self.config.tb_logger.add_image('Samples', img_grid1, d_step)
+                    self.config.tb_logger.add_image('Sources', img_grid2, d_step)
 
                 if(d_step % self.config.training.snapshot_freq == 0):
                     states = [
@@ -94,7 +101,9 @@ class BPRunner():
     def _bp_closure(self, Xs, Xt, cpat, bp, bp_opt):
         bp_opt.zero_grad()
         dx = cpat(Xs, Xt)
-        cost = (Xt - bp(Xs))**2 * dx
+        Xt_hat = bp(Xs)
+        transport_cost = ((Xt - Xt_hat)**2).flatten(start_dim=1)
+        cost = torch.mean(transport_cost, dim=1, keepdim=True) * dx
         obj = torch.mean(cost)
         obj.backward()
         return obj

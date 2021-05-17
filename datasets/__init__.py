@@ -56,7 +56,35 @@ def get_dataset(args, config):
                                   transforms.ToTensor(),
                               ]), download=True)
 
-    elif(config.data.dataset == "CELEBA-Pix"):
+    elif (config.data.dataset == "CELEBA-32px"):
+        if config.data.random_flip:
+            dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='train',
+                             transform=transforms.Compose([
+                                 transforms.CenterCrop(140),
+                                 transforms.Resize(32),
+                                 transforms.Resize(config.data.image_size),
+                                 transforms.RandomHorizontalFlip(),
+                                 transforms.ToTensor(),
+                             ]), download=True)
+        else:
+            dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='train',
+                             transform=transforms.Compose([
+                                 transforms.CenterCrop(140),
+                                 transforms.Resize(32),
+                                 transforms.Resize(config.data.image_size),
+                                 transforms.ToTensor(),
+                             ]), download=True)
+
+        test_dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='test',
+                              transform=transforms.Compose([
+                                  transforms.CenterCrop(140),
+                                  transforms.Resize(32),
+                                  transforms.Resize(config.data.image_size),
+                                  transforms.ToTensor(),
+                              ]), download=True)
+
+
+    elif(config.data.dataset == "CELEBA-8px"):
         if config.data.random_flip:
             dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='train',
                              transform=transforms.Compose([
@@ -136,35 +164,60 @@ def get_dataset(args, config):
                                            download=True,
                                            transform=transforms.Compose([
                                                transforms.RandomHorizontalFlip(p=0.5),
-                                               transforms.ToTensor(),
-                                               transforms.Resize(config.data.image_size)
+                                               transforms.Resize(config.data.image_size),
+                                               transforms.ToTensor()
                                            ]))
         else:
             dataset = MNIST(root=os.path.join('datasets', 'MNIST'),
                                            train=True,
                                            download=True,
                                            transform=transforms.Compose([
-                                               transforms.ToTensor(),
-                                               transforms.Resize(config.data.image_size)
+                                               transforms.Resize(config.data.image_size),
+                                               transforms.ToTensor()
                                            ]))
         test_dataset = MNIST(root=os.path.join('datasets', 'MNIST'),
                                            train=False,
                                            download=True,
                                            transform=transforms.Compose([
-                                               transforms.ToTensor(),
-                                               transforms.Resize(config.data.image_size)
+                                               transforms.Resize(config.data.image_size),
+                                               transforms.ToTensor()
                                            ]))
     elif config.data.dataset == "USPS":
         if config.data.random_flip:
             dataset = USPS(root=os.path.join('datasets', 'USPS'),
-                                           train=True,
-                                           download=True,
-                                           transform=transforms.Compose([
-                                               transforms.Resize(20), # resize and pad like MNIST
+                           train=True,
+                           download=True,
+                           transform=transforms.Compose([
+                               transforms.RandomHorizontalFlip(p=0.5),
+                               transforms.Resize(config.data.image_size),
+                               transforms.ToTensor()
+                           ]))
+        else:
+            dataset = USPS(root=os.path.join('datasets', 'USPS'),
+                           train=True,
+                           download=True,
+                           transform=transforms.Compose([
+                               transforms.Resize(config.data.image_size),
+                               transforms.ToTensor()
+                           ]))
+        test_dataset = USPS(root=os.path.join('datasets', 'USPS'),
+                            train=False,
+                            download=True,
+                            transform=transforms.Compose([
+                                transforms.Resize(config.data.image_size),
+                                transforms.ToTensor()
+                            ]))
+    elif config.data.dataset == "USPS-Pad":
+        if config.data.random_flip:
+            dataset = USPS(root=os.path.join('datasets', 'USPS'),
+                           train=True,
+                           download=True,
+                           transform=transforms.Compose([
+                               transforms.Resize(20), # resize and pad like MNIST
                                                transforms.Pad(4),
                                                transforms.RandomHorizontalFlip(p=0.5),
-                                               transforms.ToTensor(),
-                                               transforms.Resize(config.data.image_size)
+                                               transforms.Resize(config.data.image_size),
+                                               transforms.ToTensor()
                                            ]))
         else:
             dataset = USPS(root=os.path.join('datasets', 'USPS'),
@@ -173,8 +226,8 @@ def get_dataset(args, config):
                                            transform=transforms.Compose([
                                                transforms.Resize(20), # resize and pad like MNIST
                                                transforms.Pad(4),
-                                               transforms.ToTensor(),
-                                               transforms.Resize(config.data.image_size)
+                                               transforms.Resize(config.data.image_size),
+                                               transforms.ToTensor()
                                            ]))
         test_dataset = USPS(root=os.path.join('datasets', 'USPS'),
                                             train=False,
@@ -182,20 +235,37 @@ def get_dataset(args, config):
                                             transform=transforms.Compose([
                                                 transforms.Resize(20),  # resize and pad like MNIST
                                                 transforms.Pad(4),
-                                                transforms.ToTensor(),
-                                                transforms.Resize(config.data.image_size)
+                                                transforms.Resize(config.data.image_size),
+                                                transforms.ToTensor()
                                             ]))
     elif(config.data.dataset.upper() == "GAUSSIAN"):
         if(config.data.isotropic):
-            dim = config.data.dataset.dim
-            rank = config.data.dataset.rank
+            dim = config.data.dim
+            rank = config.data.rank
             cov = np.diag( np.pad(np.ones((rank,)), [(0, dim - rank)]) )
             mean = np.zeros((dim,))
         else:
             cov = np.array(config.data.cov)
             mean = np.array(config.data.mean)
+        
+        shape = config.data.dataset.shape if hasattr(config.data.dataset, "shape") else None
+
+        dataset = Gaussian(cov=cov, mean=mean, shape=shape)
+        test_dataset = Gaussian(cov=cov, mean=mean, shape=shape)
+
+    elif(config.data.dataset.upper() == "GAUSSIAN-HD"):
+        cov = np.load(config.data.cov_path)
+        mean = np.load(config.data.mean_path)
         dataset = Gaussian(cov=cov, mean=mean)
         test_dataset = Gaussian(cov=cov, mean=mean)
+
+    elif(config.data.dataset.upper() == "GAUSSIAN-HD-UNIT"):
+        # This dataset is to be used when GAUSSIAN with the isotropic option is infeasible due to high dimensionality
+        #   of the desired samples. If the dimension is too high, passing a huge covariance matrix is slow.
+        shape = config.data.shape if hasattr(config.data, "shape") else None
+        dataset = Gaussian(mean=None, cov=None, shape=shape, iid_unit=True)
+        test_dataset = Gaussian(mean=None, cov=None, shape=shape, iid_unit=True)
+
     return dataset, test_dataset
 
 def logit_transform(image, lam=1e-6):

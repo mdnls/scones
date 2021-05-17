@@ -3,20 +3,28 @@ import torch.utils.data as data
 from scipy.stats import multivariate_normal
 import numpy as np
 
+
+# TODO: rewrite this janky implementation.
 class Gaussian(data.Dataset):
     _repr_indent = 4
-    def __init__(self, mean, cov):
-        self.mean = mean
-        self.cov = cov
-        self.dim = len(mean)
-        self.dist = multivariate_normal(mean=self.mean, cov=self.cov, allow_singular=True, seed=2039)
+    def __init__(self, mean, cov, shape=None, iid_unit=False):
+        if(iid_unit):
+            self.dist = multivariate_normal(seed=2039)
+        else:
+            self.dist = multivariate_normal(mean=mean, cov=cov, allow_singular=True, seed=2039)
+
+        if(iid_unit and shape is None):
+            self.shape = (1,)
+        elif(shape is None):
+            self.shape = (len(self.mean), 1, 1)
+        else:
+            self.shape = shape
 
     def __getitem__(self, index):
-        # Return in the format of a 1x1 px image.
-        return self.dist.rvs(size=(1,)).reshape((-1, 1, 1)).astype(np.float), 0
+        return self.dist.rvs(size=self.shape).astype(np.float), 0
 
     def __len__(self):
-        return int(1e+6)
+        return int(1e+4)
 
     def __repr__(self):
         head = "Dataset " + self.__class__.__name__

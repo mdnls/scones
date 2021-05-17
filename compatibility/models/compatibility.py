@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from compatibility.models.special_metrics import FacenetMetric
+from compatibility.models.special_metrics import FacenetMetric, LowresMetric, SSIMMetric
 
 def get_cost(config):
     cost = config.transport.cost
@@ -11,6 +11,10 @@ def get_cost(config):
         c = lambda x, y: torch.mean((x.flatten(start_dim=1) - y.flatten(start_dim=1)) ** 2, dim=1)[:, None]
     elif(cost == "facenet"):
         c = FacenetMetric(config)
+    elif(cost == "lowres-8px"):
+        c = LowresMetric(lowres=8, config=config) # lowres = 8px
+    elif(cost == "ssim"):
+        c = SSIMMetric(config=config)
     else:
         raise ValueError(f"{cost} is not a valid choice of cost metric.")
     return c
@@ -69,7 +73,7 @@ class Compatibility(nn.Module):
             cpat_fn = lambda x, y: temp * self._violation(x, y)
             transport_grad = torch.cat(torch.autograd.grad(outputs=list(cpat_fn(x, y)), inputs=[y]), dim=1)
         elif(reg_type == "l2"):
-            soft_cpat_fn = lambda x, y: (1/2) * temp * nn.functional.softplus(self._violation(x, y))
+            soft_cpat_fn = lambda x, y: (1/2) * temp * nn.functional.softplus(self._violation(x, y), beta=80)
             transport_grad = torch.cat(torch.autograd.grad(outputs=list(torch.log(soft_cpat_fn(x, y))), inputs=[y]), dim=1)
 
         return transport_grad

@@ -1,6 +1,6 @@
 source:
   data:
-    dataset: "CELEBA-Pix"
+    dataset: "CELEBA-32px"
     image_size: 64
     channels: 3
     logit_transform: false
@@ -36,8 +36,8 @@ optim:
   eps: 0.00000001
 
 model:
-  architecture: "cnn"
-  hidden_layers: [100, 100, 100, 100, 100]
+  architecture: "fcn"
+  hidden_layers: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]
 
 training:
   batch_size: 500

@@ -1,14 +1,18 @@
 source:
   data:
-    dataset: "CELEBA-Pix"
-    image_size: 64
+    dataset: "gaussian-hd-unit"
+    isotropic: true
+    dim: 12288
+    rank: 12288
+    shape: [3, 64, 64]
     channels: 3
+    image_size: 64
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
-    random_flip: true
+    random_flip: false
     rescaled: false
-    num_workers: 12
+    num_workers: 0
 
 target:
   data:
@@ -24,7 +28,7 @@ target:
 
 transport:
   regularization: "entropy" # l2, entropy
-  coeff: 0.05
+  coeff: 0.01
   cost: "mean-l2-sq" # l2-sq, mean-l2-sq
 
 optim:
@@ -40,6 +44,6 @@ model:
   hidden_layers: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]
 
 training:
-  batch_size: 500
+  batch_size: 1000
   n_iters: 5001
   snapshot_freq: 5000

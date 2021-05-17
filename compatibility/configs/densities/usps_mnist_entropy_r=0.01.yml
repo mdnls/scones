@@ -1,8 +1,8 @@
 source:
   data:
-    dataset: "CELEBA-Pix"
-    image_size: 64
-    channels: 3
+    dataset: "USPS"
+    image_size: 28
+    channels: 1
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
@@ -12,9 +12,9 @@ source:
 
 target:
   data:
-    dataset: "CELEBA"
-    image_size: 64
-    channels: 3
+    dataset: "MNIST"
+    image_size: 28
+    channels: 1
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
@@ -23,8 +23,8 @@ target:
     num_workers: 0
 
 transport:
-  regularization: "l2" # l2, entropy
-  coeff: 0.1
+  regularization: "entropy" # l2, entropy
+  coeff: 0.01
   cost: "mean-l2-sq" # l2-sq, mean-l2-sq
 
 optim:
@@ -37,7 +37,7 @@ optim:
 
 model:
   architecture: "fcn"
-  hidden_layers: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]
+  hidden_layers: [2048, 2048, 2048, 2048]
 
 training:
   batch_size: 500

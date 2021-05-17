@@ -1,6 +1,6 @@
 source:
   data:
-    dataset: "CELEBA-Pix"
+    dataset: "CELEBA-32px"
     image_size: 64
     channels: 3
     logit_transform: false
@@ -8,7 +8,7 @@ source:
     gaussian_dequantization: false
     random_flip: true
     rescaled: false
-    num_workers: 12
+    num_workers: 0
 
 target:
   data:
@@ -24,7 +24,7 @@ target:
 
 transport:
   regularization: "l2" # l2, entropy
-  coeff: 0.05
+  coeff: 0.1
   cost: "mean-l2-sq" # l2-sq, mean-l2-sq
 
 optim:
@@ -40,6 +40,6 @@ model:
   hidden_layers: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]
 
 training:
-  batch_size: 500
+  batch_size: 1000
   n_iters: 5001
   snapshot_freq: 5000

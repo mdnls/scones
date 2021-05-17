@@ -1,6 +1,6 @@
 source:
   data:
-    dataset: "CELEBA-Pix"
+    dataset: "CELEBA-32px"
     image_size: 64
     channels: 3
     logit_transform: false
@@ -8,7 +8,7 @@ source:
     gaussian_dequantization: false
     random_flip: true
     rescaled: false
-    num_workers: 12
+    num_workers: 0
 
 target:
   data:
@@ -24,21 +24,20 @@ target:
 
 transport:
   regularization: "entropy" # l2, entropy
-  coeff: 0.005
-  cost: "ssim"
+  coeff: 0.1
+  cost: "mean-l2-sq" # l2-sq, mean-l2-sq
 
 optim:
   weight_decay: 0.000
   optimizer: "Adam"
-  lr: 0.000005 # 0.00001
+  lr: 0.00001
   beta1: 0.9
   amsgrad: false
   eps: 0.00000001
 
-
 model:
-  architecture: "cnn" #"fcn"
-  hidden_layers: [50, 50, 50, 50] # [4096, 4096, 4096, 4096, 4096, 4096]
+  architecture: "fcn"
+  hidden_layers: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]
 
 training:
   batch_size: 1000

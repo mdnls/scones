@@ -26,6 +26,7 @@ def get_compatibility(config):
     cnf_for_cpat.source = config.source
     cnf_for_cpat.target = config.target
     cnf_for_cpat.transport = config.transport
+    cnf_for_cpat.device = config.device
     return _get_compatibility(cnf_for_cpat)
 
 def get_scorenet(config):
@@ -37,6 +38,8 @@ def get_scorenet(config):
         return NCSNv2Deepest(cnf_for_ncsn).to(config.device)
     elif config.target.data.dataset == 'LSUN':
         return NCSNv2Deeper(cnf_for_ncsn).to(config.device)
+    elif config.target.data.dataset == 'MNIST':
+        return NCSN(cnf_for_ncsn).to(config.device)
 
 class SCONESRunner():
     def __init__(self, args, config):
@@ -215,14 +218,7 @@ class SCONESRunner():
                                                        verbose=True,
                                                        final_only=self.config.ncsn.sampling.final_only,
                                                        denoise=self.config.ncsn.sampling.denoise)
-                '''
-                all_samples = anneal_Langevin_dynamics(init_Xt, score, sigmas,
-                                                       self.config.ncsn.sampling.n_steps_each,
-                                                       self.config.ncsn.sampling.step_lr,
-                                                       verbose=True,
-                                                       final_only=self.config.ncsn.sampling.final_only,
-                                                       denoise=self.config.ncsn.sampling.denoise)
-                '''
+
                 all_samples = torch.stack(all_samples, dim=0)
 
                 if not self.config.ncsn.sampling.final_only:

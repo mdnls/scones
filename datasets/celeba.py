@@ -9,7 +9,7 @@ class CelebA(VisionDataset):
     """`Large-scale CelebFaces Attributes (CelebA) Dataset <http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html>`_ Dataset.
 
     Args:
-        root (string): Root directory where images are downloaded to.
+        root (string): Root densities where images are downloaded to.
         split (string): One of {'train', 'valid', 'test'}.
             Accordingly dataset is selected.
         target_type (string or list, optional): Type of target to use, ``attr``, ``identity``, ``bbox``,
@@ -26,7 +26,7 @@ class CelebA(VisionDataset):
         target_transform (callable, optional): A function/transform that takes in the
             target and transforms it.
         download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
+            puts it in root densities. If dataset is already downloaded, it is not
             downloaded again.
     """
 

@@ -91,7 +91,7 @@ class BPRunner():
 
                 if(d_step % self.config.training.snapshot_freq == 0):
                     states = [
-                        cpat.state_dict(),
+                        baryproj.state_dict(),
                         d_step
                     ]
 

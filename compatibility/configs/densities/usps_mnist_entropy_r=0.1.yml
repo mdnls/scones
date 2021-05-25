@@ -1,8 +1,8 @@
 source:
   data:
-    dataset: "CELEBA"
-    image_size: 64
-    channels: 3
+    dataset: "USPS"
+    image_size: 16
+    channels: 1
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
@@ -12,9 +12,9 @@ source:
 
 target:
   data:
-    dataset: "CELEBA"
-    image_size: 64
-    channels: 3
+    dataset: "MNIST"
+    image_size: 16
+    channels: 1
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
@@ -23,33 +23,23 @@ target:
     num_workers: 0
 
 transport:
-  regularization: "l2" # l2, entropy
+  regularization: "entropy" # l2, entropy
   coeff: 0.1
   cost: "mean-l2-sq" # l2-sq, mean-l2-sq
 
 optim:
   weight_decay: 0.000
   optimizer: "Adam"
-  lr: 0.000001
+  lr: 0.00001
   beta1: 0.9
   amsgrad: false
   eps: 0.00000001
 
 model:
-  architecture: "res"
-  normalization: InstanceNorm++
-  nonlinearity: elu
-  ngf: 48
+  architecture: "fcn"
+  hidden_layers: [1024, 1024]
 
 training:
-  batch_size: 64
-  n_iters: 20000
+  batch_size: 1000
+  n_iters: 5001
   snapshot_freq: 5000
-  sample_freq: 200
-
-compatibility:
-  log_path: pretrained/compatibility/densities/celeba_chisq_0.1
-  ckpt_id: 5000
-  model:
-    architecture: "fcn"
-    hidden_layers: [2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048]

@@ -1,19 +1,19 @@
 source:
   data:
     dataset: "USPS"
-    image_size: 28
+    image_size: 16
     channels: 1
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
     random_flip: true
     rescaled: false
-    num_workers: 12
+    num_workers: 0
 
 target:
   data:
     dataset: "MNIST"
-    image_size: 28
+    image_size: 16
     channels: 1
     logit_transform: false
     uniform_dequantization: false
@@ -37,9 +37,9 @@ optim:
 
 model:
   architecture: "fcn"
-  hidden_layers: [2048, 2048, 2048, 2048]
+  hidden_layers: [1024, 1024]
 
 training:
-  batch_size: 500
+  batch_size: 1000
   n_iters: 5001
   snapshot_freq: 5000

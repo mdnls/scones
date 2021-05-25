@@ -48,7 +48,7 @@ training:
   sample_freq: 200
 
 compatibility:
-  log_path: pretrained/compatibility/superres_celeba_chisq_0.1
+  log_path: pretrained/compatibility/densities/superres_celeba_KL_0.1
   ckpt_id: 5000
   model:
     architecture: "fcn"

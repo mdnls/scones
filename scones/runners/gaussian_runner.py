@@ -23,9 +23,11 @@ def get_compatibility(config):
     cnf_for_cpat.transport = config.transport
     return _get_compatibility(cnf_for_cpat)
 
-def get_scorenet(config):
+def get_scorenet(config, target):
     cnf_for_ncsn = copy.deepcopy(config.ncsn)
     cnf_for_ncsn.data = config.target.data
+    cnf_for_ncsn.data.mean = target.mean.detach().cpu().numpy()
+    cnf_for_ncsn.data.cov = target.cov.detach().cpu().numpy()
     return GaussianScore(cnf_for_ncsn)
 
 class GaussianRunner():
@@ -36,10 +38,6 @@ class GaussianRunner():
         os.makedirs(args.log_sample_path, exist_ok=True)
 
     def sample(self):
-        score = get_scorenet(self.config).to(self.config.device)
-        score = torch.nn.DataParallel(score)
-        score.eval()
-
         if self.config.compatibility.ckpt_id is None:
             cpat_states = torch.load(os.path.join('scones', self.config.compatibility.log_path, 'checkpoint.pth'),
                                      map_location=self.config.device)
@@ -57,8 +55,16 @@ class GaussianRunner():
                                 shuffle=True,
                                 num_workers=self.config.source.data.num_workers)
 
+        target_dataset, _ = get_dataset(self.args, self.config.target)
+        score = get_scorenet(self.config, target_dataset).to(self.config.device)
+        score = torch.nn.DataParallel(score)
+        score.eval()
+
         (Xs, _) = next(iter(dataloader))
         Xs_global = torch.cat([Xs] * self.config.ncsn.sampling.samples_per_source, dim=0).to(self.config.device).type(torch.float)
+        Xs_global = Xs_global.view(self.config.ncsn.sampling.sources_per_batch *
+                                 self.config.ncsn.sampling.samples_per_source,
+                                 self.config.target.data.dim, 1, 1)
 
         if self.config.ncsn.sampling.data_init:
             init_Xt = torch.clone(Xs_global)
@@ -66,7 +72,7 @@ class GaussianRunner():
             init_Xt = init_Xt.to(self.config.device)
 
         else:
-            init_Xt = torch.rand(self.config.ncsn.sampling.sources_per_batch *
+            init_Xt = torch.zeros(self.config.ncsn.sampling.sources_per_batch *
                                  self.config.ncsn.sampling.samples_per_source,
                                  self.config.target.data.dim, 1, 1,
                                  device=self.config.device)
@@ -77,6 +83,7 @@ class GaussianRunner():
                                            self.config.ncsn.sampling.n_steps_each,
                                            self.config.ncsn.sampling.step_lr,
                                            verbose=True,
+                                           sample_every=self.config.ncsn.sampling.sample_every,
                                            final_only=self.config.ncsn.sampling.final_only)
 
         all_samples = torch.stack(all_samples, dim=0)

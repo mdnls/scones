@@ -4,14 +4,14 @@ from .imagecritic import *
 from .simple import *
 
 def get_compatibility(config):
-    if(config.source.data.dataset.upper() == "GAUSSIAN"):
+    if(config.source.data.dataset.upper() in ["GAUSSIAN", "GAUSSIAN-HD"]):
         source_shape = (config.source.data.dim, 1, 1)
     else:
         source_shape = (config.source.data.channels,
                         config.source.data.image_size,
                         config.source.data.image_size)
 
-    if(config.target.data.dataset.upper() == "GAUSSIAN"):
+    if(config.target.data.dataset.upper() in ["GAUSSIAN", "GAUSSIAN-HD"]):
         target_shape = (config.target.data.dim, 1, 1)
     else:
         target_shape = (config.target.data.channels,
@@ -40,9 +40,14 @@ def get_compatibility(config):
     else:
         raise ValueError(f"{config.model.architecture} is not a valid choice of architecture.")
 
+    swap_xy = False
+    if(hasattr(config, "swap_xy")):
+        swap_xy = True
+
     cpat = Compatibility(inp_density_param=source_critic,
                          outp_density_param=target_critic,
-                         config=config).to(config.device)
+                         config=config,
+                         swap_xy=swap_xy).to(config.device)
 
     return cpat
 

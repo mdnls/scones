@@ -16,12 +16,22 @@ from scones.models import (anneal_Langevin_dynamics,
 from ncsn.models import get_sigmas
 from ncsn.models.ema import EMAHelper
 from compatibility.models import get_compatibility as _get_compatibility
+from baryproj.models import get_bary as _get_bary
 from ncsn.runners import NCSNRunner
 __all__ = ['SCONESRunner']
 
+# todo: redesign the config to avoid translation in get_bary, get_compatibility, etc
+
+def get_bary(config):
+    cnf_for_bary = copy.deepcopy(config.baryproj)
+    cnf_for_bary.source = config.source
+    cnf_for_bary.target = config.target
+    cnf_for_bary.transport = config.transport
+    cnf_for_bary.device = config.device
+    return _get_bary(cnf_for_bary)
+
 
 def get_compatibility(config):
-    # TODO: redesign cpat to avoid translation
     cnf_for_cpat = copy.deepcopy(config.compatibility)
     cnf_for_cpat.source = config.source
     cnf_for_cpat.target = config.target
@@ -63,9 +73,31 @@ class SCONESRunner():
         score = get_scorenet(self.config)
         score = torch.nn.DataParallel(score)
 
+        sigmas_th = get_sigmas(self.config.ncsn)
+        sigmas = sigmas_th.cpu().numpy()
+
+        ncsn_states[0]["module.sigmas"] = sigmas_th
         score.load_state_dict(ncsn_states[0], strict=True)
 
         score.eval()
+
+        baryproj_data_init = (hasattr(self.config, "baryproj") and self.config.ncsn.sampling.data_init)
+
+        if(baryproj_data_init):
+            if(self.config.baryproj.ckpt_id is None):
+                bproj_states = torch.load(
+                    os.path.join('scones', self.config.baryproj.log_path, 'checkpoint.pth'),
+                    map_location=self.config.device)
+            else:
+                bproj_states = torch.load(os.path.join('scones', self.config.baryproj.log_path,
+                                                      f'checkpoint_{self.config.baryproj.ckpt_id}.pth'),
+                                         map_location=self.config.device)
+
+            bproj = get_bary(self.config)
+            bproj.load_state_dict(bproj_states[0])
+            bproj = torch.nn.DataParallel(bproj)
+            bproj.eval()
+
 
         if self.config.compatibility.ckpt_id is None:
             cpat_states = torch.load(os.path.join('scones', self.config.compatibility.log_path, 'checkpoint.pth'), map_location=self.config.device)
@@ -82,8 +114,7 @@ class SCONESRunner():
             ema_helper.load_state_dict(ncsn_states[-1])
             ema_helper.ema(score)
 
-        sigmas_th = get_sigmas(self.config.ncsn)
-        sigmas = sigmas_th.cpu().numpy()
+
 
         source_dataset, _ = get_dataset(self.args, self.config.source)
         dataloader = DataLoader(source_dataset,
@@ -197,7 +228,11 @@ class SCONESRunner():
                 raise NotImplementedError("Interpolation with SCONES is not currently implemented.")
             else:
                 if self.config.ncsn.sampling.data_init:
-                    init_Xt = Xs_global + sigmas_th[0] * torch.randn_like(Xs_global)
+                    if(baryproj_data_init):
+                        init_Xt = bproj(Xs_global) + sigmas_th[0] * torch.randn_like(Xs_global)
+                    else:
+                        init_Xt = Xs_global + sigmas_th[0] * torch.randn_like(Xs_global)
+
                     init_Xt.requires_grad = True
                     init_Xt = init_Xt.to(self.config.device)
 
@@ -269,21 +304,28 @@ class SCONESRunner():
                         samples = torch.cat([samples] * self.config.ncsn.sampling.samples_per_source, dim=0)
                     samples = samples.to(self.config.device)
                     samples = data_transform(self.config.target, samples)
+
+                    if(baryproj_data_init):
+                        with torch.no_grad():
+                            samples = bproj(samples).detach()
+
                     samples = samples + sigmas_th[0] * torch.randn_like(samples)
                     samples.requires_grad = True
                     samples = samples.to(self.config.device)
                 else:
                     samples = torch.rand(batch_size,
-                                         self.config.data.channels,
-                                         self.config.data.image_size,
-                                         self.config.data.image_size, device=self.config.device)
-                    samples = data_transform(self.config, samples)
+                                         self.config.target.data.channels,
+                                         self.config.target.data.image_size,
+                                         self.config.target.data.image_size, device=self.config.device)
+                    samples = data_transform(self.config.target, samples)
                     samples.requires_grad = True
                     samples = samples.to(self.config.device)
 
                 all_samples = anneal_Langevin_dynamics(samples, Xs_global, score, cpat, sigmas,
                                                        self.config.ncsn.sampling.n_steps_each,
-                                                       self.config.ncsn.sampling.step_lr, verbose=False,
+                                                       self.config.ncsn.sampling.step_lr,
+                                                       verbose=True,
+                                                       final_only=self.config.ncsn.sampling.final_only,
                                                        denoise=self.config.ncsn.sampling.denoise)
 
                 samples = all_samples[-1]
@@ -365,6 +407,7 @@ class SCONESRunner():
                                                        self.config.ncsn.fast_fid.n_steps_each,
                                                        self.config.ncsn.fast_fid.step_lr,
                                                        verbose=self.config.ncsn.fast_fid.verbose,
+                                                       final_only=self.config.ncsn.sampling.final_only,
                                                        denoise=self.config.ncsn.sampling.denoise)
 
                 final_samples = all_samples[-1]
@@ -450,6 +493,7 @@ class SCONESRunner():
                                                        self.config.ncsn.fast_fid.n_steps_each,
                                                        self.config.ncsn.fast_fid.step_lr,
                                                        verbose=self.config.ncsn.fast_fid.verbose,
+                                                       final_only=self.config.ncsn.sampling.final_only,
                                                        denoise=self.config.ncsn.sampling.denoise)
 
                 final_samples = all_samples[-1]

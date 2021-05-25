@@ -32,11 +32,12 @@ def anneal_Langevin_dynamics(tgt, source, scorenet, cpat, sigmas, n_steps_each=2
                     c, step_size, grad_norm.item(), cpat_grad_norm.item(), image_norm.item(), snr.item(), grad_mean_norm.item()))
 
     if denoise:
-        last_noise = (len(sigmas) - 1) * torch.ones(tgt.shape[0], device=tgt.device)
-        last_noise = last_noise.long()
-        #tgt = tgt + sigmas[-1] ** 2 * (scorenet(tgt, last_noise) + cpat.score(source, tgt))
-        tgt = tgt + sigmas[-1] ** 2 * (scorenet(tgt, last_noise))
-        images.append(tgt.to('cpu'))
+        cpat_score = cpat.score(source, tgt).detach()
+        with torch.no_grad():
+            last_noise = (len(sigmas) - 1) * torch.ones(tgt.shape[0], device=tgt.device)
+            last_noise = last_noise.long()
+            tgt = tgt + sigmas[-1] ** 2 * (scorenet(tgt, last_noise) + cpat_score)
+            images.append(tgt.to('cpu'))
 
     if final_only:
         return [tgt.to('cpu')]
@@ -125,7 +126,7 @@ def anneal_Langevin_dynamics_interpolation(x_mod, scorenet, sigmas, n_interpolat
         return images
 
 
-def Langevin_dynamics(tgt, source, scorenet, cpat, n_steps, step_lr=0.000008, final_only=False, verbose=False):
+def Langevin_dynamics(tgt, source, scorenet, cpat, n_steps, step_lr=0.000008, final_only=False, sample_every=1, verbose=False):
     images = []
 
     for s in range(n_steps):
@@ -144,7 +145,7 @@ def Langevin_dynamics(tgt, source, scorenet, cpat, n_steps, step_lr=0.000008, fi
         snr = np.sqrt(step_lr / 2.) * grad_norm / noise_norm
         grad_mean_norm = torch.norm(grad.mean(dim=0).view(-1)) ** 2
 
-        if not final_only:
+        if not final_only and (s % sample_every == 0):
             images.append(tgt.to('cpu'))
         if verbose:
             print("step: {}, grad_norm: {}, cpat_grad_norm: {}, image_norm: {}, snr: {}, grad_mean_norm: {}".format(

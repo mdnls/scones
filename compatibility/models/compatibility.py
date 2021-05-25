@@ -3,6 +3,12 @@ import torch.nn as nn
 import numpy as np
 from compatibility.models.special_metrics import FacenetMetric, LowresMetric, SSIMMetric
 
+def _at(A, x):
+    return torch.matmul(A, x[:, :, None])[:, :, 0]
+
+def _dot(xT, Ax):
+    return torch.sum(xT * Ax, dim=-1)
+
 def get_cost(config):
     cost = config.transport.cost
     if(cost == "l2-sq"):
@@ -20,7 +26,7 @@ def get_cost(config):
     return c
 
 class Compatibility(nn.Module):
-    def __init__(self, inp_density_param, outp_density_param, config):
+    def __init__(self, inp_density_param, outp_density_param, config, swap_xy=False):
         super(Compatibility, self).__init__()
         self.config = config
         self.transport_cost = get_cost(config)
@@ -37,8 +43,12 @@ class Compatibility(nn.Module):
         else:
             raise ValueError("Invalid choice of regularization")
 
-        self.inp_density_param_net = inp_density_param
-        self.outp_density_param_net = outp_density_param
+        if(swap_xy):
+            self.inp_density_param_net = outp_density_param
+            self.outp_density_param_net = inp_density_param
+        else:
+            self.inp_density_param_net = inp_density_param
+            self.outp_density_param_net = outp_density_param
 
     def _violation(self, x, y):
         if(type(x) == tuple and type(y) == tuple):
@@ -64,16 +74,20 @@ class Compatibility(nn.Module):
         reg_type = self.config.transport.regularization
         cost = self.config.transport.cost
         temp = 1 / self.config.transport.coeff
-
-        if(reg_type == "entropy" and cost in ["l2-sq", "mean-l2-sq"]):
+        if (reg_type == "entropy" and cost in ["l2-sq", "mean-l2-sq"]):
             target_p_grad = torch.cat(torch.autograd.grad(outputs=list(self.outp_density_param(y)), inputs=[y]), dim=1)
-            scale = 1 if (cost == "l2-sq") else 1 / np.prod(y.shape[1:])
+            scale = 2 if (cost == "l2-sq") else 2 / np.prod(y.shape[1:])
             transport_grad = temp * (target_p_grad + scale * (x - y))
         elif(reg_type == "entropy"):
             cpat_fn = lambda x, y: temp * self._violation(x, y)
             transport_grad = torch.cat(torch.autograd.grad(outputs=list(cpat_fn(x, y)), inputs=[y]), dim=1)
         elif(reg_type == "l2"):
-            soft_cpat_fn = lambda x, y: (1/2) * temp * nn.functional.softplus(self._violation(x, y), beta=80)
+            if(hasattr(self.config.model, "beta")):
+                beta = self.config.model.beta
+            else:
+                beta = 1 # default pytorch value
+            soft_cpat_fn = lambda x, y: (1/2) * temp * nn.functional.softplus(self._violation(x, y), beta=beta)
             transport_grad = torch.cat(torch.autograd.grad(outputs=list(torch.log(soft_cpat_fn(x, y))), inputs=[y]), dim=1)
 
         return transport_grad
+

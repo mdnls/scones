@@ -2,16 +2,18 @@ import torch
 import torch.utils.data as data
 from scipy.stats import multivariate_normal
 import numpy as np
+import scipy.linalg
 
 
 # TODO: rewrite this janky implementation.
 class Gaussian(data.Dataset):
     _repr_indent = 4
-    def __init__(self, mean, cov, shape=None, iid_unit=False):
-        if(iid_unit):
-            self.dist = multivariate_normal(seed=2039)
-        else:
-            self.dist = multivariate_normal(mean=mean, cov=cov, allow_singular=True, seed=2039)
+    def __init__(self, mean, cov, device, shape=None, iid_unit=False):
+        self.device = device
+        self.mean = torch.FloatTensor(mean).to(device)
+        self.cov = torch.FloatTensor(np.abs(scipy.linalg.sqrtm(cov))).to(device)
+        self.iid_unit = iid_unit
+        self.dist = multivariate_normal(seed=2039)
 
         if(iid_unit and shape is None):
             self.shape = (1,)
@@ -21,7 +23,11 @@ class Gaussian(data.Dataset):
             self.shape = shape
 
     def __getitem__(self, index):
-        return self.dist.rvs(size=self.shape).astype(np.float), 0
+        if(self.iid_unit):
+            return torch.FloatTensor(self.dist.rvs(size=self.shape).astype(np.float)).to(self.device), 0
+        else:
+            sample = torch.FloatTensor(self.dist.rvs(size=(len(self.mean), 1))).to(self.device)
+            return (self.cov @ sample + self.mean), 0
 
     def __len__(self):
         return int(1e+4)

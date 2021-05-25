@@ -239,6 +239,9 @@ def get_dataset(args, config):
                                                 transforms.ToTensor()
                                             ]))
     elif(config.data.dataset.upper() == "GAUSSIAN"):
+        if(config.data.num_workers != 0):
+            raise ValueError("If using a Gaussian dataset, num_workers must be zero. \
+            Gaussian data is sampled at runtime and doing so with multiple workers may cause a CUDA error.")
         if(config.data.isotropic):
             dim = config.data.dim
             rank = config.data.rank
@@ -250,21 +253,27 @@ def get_dataset(args, config):
         
         shape = config.data.dataset.shape if hasattr(config.data.dataset, "shape") else None
 
-        dataset = Gaussian(cov=cov, mean=mean, shape=shape)
-        test_dataset = Gaussian(cov=cov, mean=mean, shape=shape)
+        dataset = Gaussian(device=args.device, cov=cov, mean=mean, shape=shape)
+        test_dataset = Gaussian(device=args.device, cov=cov, mean=mean, shape=shape)
 
     elif(config.data.dataset.upper() == "GAUSSIAN-HD"):
+        if(config.data.num_workers != 0):
+            raise ValueError("If using a Gaussian dataset, num_workers must be zero. \
+            Gaussian data is sampled at runtime and doing so with multiple workers may cause a CUDA error.")
         cov = np.load(config.data.cov_path)
         mean = np.load(config.data.mean_path)
-        dataset = Gaussian(cov=cov, mean=mean)
-        test_dataset = Gaussian(cov=cov, mean=mean)
+        dataset = Gaussian(device=args.device, cov=cov, mean=mean)
+        test_dataset = Gaussian(device=args.device, cov=cov, mean=mean)
 
     elif(config.data.dataset.upper() == "GAUSSIAN-HD-UNIT"):
         # This dataset is to be used when GAUSSIAN with the isotropic option is infeasible due to high dimensionality
         #   of the desired samples. If the dimension is too high, passing a huge covariance matrix is slow.
+        if(config.data.num_workers != 0):
+            raise ValueError("If using a Gaussian dataset, num_workers must be zero. \
+            Gaussian data is sampled at runtime and doing so with multiple workers may cause a CUDA error.")
         shape = config.data.shape if hasattr(config.data, "shape") else None
-        dataset = Gaussian(mean=None, cov=None, shape=shape, iid_unit=True)
-        test_dataset = Gaussian(mean=None, cov=None, shape=shape, iid_unit=True)
+        dataset = Gaussian(device=args.device, mean=None, cov=None, shape=shape, iid_unit=True)
+        test_dataset = Gaussian(device=args.device, mean=None, cov=None, shape=shape, iid_unit=True)
 
     return dataset, test_dataset
 

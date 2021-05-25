@@ -76,6 +76,7 @@ def parse_args_and_config():
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     logging.info("Using device: {}".format(device))
     new_config.device = device
+    args.device = device
 
     # set random seed
     torch.manual_seed(args.seed)

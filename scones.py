@@ -65,6 +65,7 @@ def parse_args_and_config():
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     logging.info("Using device: {}".format(device))
     new_config.device = device
+    args.device = device
 
     # todo: rethink the config design to avoid translation
     new_config.ncsn.device = device
@@ -104,7 +105,7 @@ def main():
     print("<" * 80)
 
     try:
-        if(config.target.data.dataset.upper() == "GAUSSIAN"):
+        if(config.target.data.dataset.upper() in ["GAUSSIAN", "GAUSSIAN-HD"]):
             runner = GaussianRunner(args, config)
         else:
             runner = SCONESRunner(args, config)

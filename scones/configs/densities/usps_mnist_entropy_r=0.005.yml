@@ -15,7 +15,7 @@ source:
     gaussian_dequantization: false
     random_flip: false
     rescaled: false
-    num_workers: 12
+    num_workers: 4
 
 target:
   data:
@@ -27,11 +27,11 @@ target:
     gaussian_dequantization: false
     random_flip: false
     rescaled: false
-    num_workers: 12
+    num_workers: 4
 
 transport:
   regularization: "l2" # l2, entropy
-  coeff: 0.001
+  coeff: 0.005
   cost: "mean-l2-sq"
 
 ncsn:

@@ -6,7 +6,7 @@ source:
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
-    random_flip: true
+    random_flip: false
     rescaled: false
     num_workers: 0
 
@@ -18,7 +18,7 @@ target:
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
-    random_flip: true
+    random_flip: false
     rescaled: false
     num_workers: 0
 

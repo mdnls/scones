@@ -41,7 +41,7 @@ target:
     gaussian_dequantization: false
     random_flip: true
     rescaled: false
-    num_workers: 12
+    num_workers: 4
 
 transport:
   regularization: "l2" # l2, entropy
@@ -51,7 +51,7 @@ transport:
 ncsn:
   sampling:
     log_path: pretrained/ncsn/celeba
-    sources_per_batch: 300
+    sources_per_batch: 500
     samples_per_source: 1
     data_init: true
     step_lr: 0.0000015
@@ -60,7 +60,7 @@ ncsn:
     final_only: true
     fid: true
     denoise: true
-    num_samples4fid: 300
+    num_samples4fid: 9000
     inpainting: false
     interpolation: false
     n_interpolations: 15

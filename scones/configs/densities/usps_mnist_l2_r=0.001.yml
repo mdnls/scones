@@ -15,7 +15,7 @@ source:
     gaussian_dequantization: false
     random_flip: false
     rescaled: false
-    num_workers: 12
+    num_workers: 4
 
 target:
   data:
@@ -27,7 +27,7 @@ target:
     gaussian_dequantization: false
     random_flip: false
     rescaled: false
-    num_workers: 12
+    num_workers: 4
 
 transport:
   regularization: "l2" # l2, entropy
@@ -64,6 +64,7 @@ ncsn:
     ensemble: false
 
   model:
+    original_image_size: 28
     sigma_begin: 1
     sigma_end: 0.01
     num_classes: 10

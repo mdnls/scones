@@ -1,4 +1,4 @@
-source:
+target:
   data:
     dataset: "USPS"
     image_size: 16
@@ -10,7 +10,7 @@ source:
     rescaled: false
     num_workers: 0
 
-target:
+source:
   data:
     dataset: "MNIST"
     image_size: 16
@@ -37,7 +37,7 @@ optim:
 
 model:
   architecture: "fcn"
-  hidden_layer_dims: [1024, 1024]
+  hidden_layer_dims: [2048, 2048, 2048, 2048]
 
 training:
   batch_size: 1000
@@ -46,7 +46,7 @@ training:
   sample_freq: 200
 
 compatibility:
-  log_path: pretrained/compatibility/densities/mnist_KL_0.01
+  log_path: pretrained/compatibility/densities/usps_KL_0.01
   ckpt_id: 5000
   model:
     architecture: "fcn"

@@ -1,11 +1,11 @@
 compatibility:
-  log_path: pretrained/compatibility/densities/gaussian_mnist_KL_0.25
+  log_path: pretrained/compatibility/densities/mnist_gaussian_KL_0.5
   ckpt_id: 5000
   model:
     architecture: "fcn"
     hidden_layers: [2048, 2048, 2048, 2048]
 
-source:
+target:
   data:
     dataset: "Gaussian"
     isotropic: true
@@ -20,14 +20,14 @@ source:
     rescaled: false
     num_workers: 0
 
-target:
+source:
   data:
     dataset: "Gaussian-HD"
     isotropic: false
     dim: 784
     rank: 784
     mean_path: datasets/gaussian_statistics/MNIST-Mean-01.npy
-    cov_path: datasets/gaussian_statistics/MNIST-Cov-01-add_0.1_noise.npy
+    cov_path: datasets/gaussian_statistics/MNIST-Cov-01.npy
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
@@ -37,7 +37,7 @@ target:
 
 transport:
   regularization: "entropy" # l2, entropy
-  coeff: 0.25
+  coeff: 0.5
   cost: "mean-l2-sq" # l2-sq, mean-l2-sq
 
 ncsn:

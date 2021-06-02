@@ -1,7 +1,6 @@
 compatibility:
   log_path: pretrained/compatibility/densities/gaussian_mnist_KL_0.5
   ckpt_id: 5000
-  swap_xy: true
   model:
     architecture: "fcn"
     hidden_layers: [2048, 2048, 2048, 2048]

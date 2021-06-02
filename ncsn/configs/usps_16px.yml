@@ -1,23 +1,24 @@
 training:
   batch_size: 128
   n_epochs: 500000
-  n_iters: 200001
+  n_iters: 40001
   ngpu: 1
   snapshot_freq: 5000
+  snapshot_sampling: true
   algo: 'dsm'
   anneal_power: 2.0
   log_all_sigmas: false
 
 data:
-  dataset: "MNIST"
-  image_size: 28
+  dataset: "USPS"
+  image_size: 16
   channels: 1
   logit_transform: false
   uniform_dequantization: false
   gaussian_dequantization: false
   random_flip: false
   rescaled: false
-  num_workers: 32
+  num_workers: 12
 
 model:
   sigma_begin: 1

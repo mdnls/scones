@@ -1,33 +1,41 @@
 compatibility:
-  log_path: pretrained/compatibility/mnist_l2_r=0.001
-  beta: 10
+  log_path: pretrained/compatibility/densities/usps_chisq_0.001
+  ckpt_id:
+  beta: 1000
   model:
     architecture: "fcn"
-    hidden_layers: [2048, 2048, 2048, 2048]
+    hidden_layers: [1024, 1024]
 
-source:
-  data:
-    dataset: "USPS"
-    image_size: 28
-    channels: 1
-    logit_transform: false
-    uniform_dequantization: false
-    gaussian_dequantization: false
-    random_flip: false
-    rescaled: false
-    num_workers: 4
+baryproj:
+  log_path: pretrained/baryproj/mnist_usps_largebp
+  ckpt_id: # use final ckpt
+  model:
+    architecture: "fcn"
+    hidden_layer_dims: [2048, 2048, 2048, 2048]
 
 target:
   data:
-    dataset: "MNIST"
-    image_size: 28
+    dataset: "USPS"
+    image_size: 16
     channels: 1
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
     random_flip: false
     rescaled: false
-    num_workers: 4
+    num_workers: 12
+
+source:
+  data:
+    dataset: "MNIST"
+    image_size: 16
+    channels: 1
+    logit_transform: false
+    uniform_dequantization: false
+    gaussian_dequantization: false
+    random_flip: false
+    rescaled: false
+    num_workers: 12
 
 transport:
   regularization: "l2" # l2, entropy
@@ -36,22 +44,23 @@ transport:
 
 ncsn:
   sampling:
-    log_path: pretrained/ncsn/mnist
-    sources_per_batch: 8
-    samples_per_source: 8
+    log_path: pretrained/ncsn/usps_16px
+    sources_per_batch: 40 #250
+    samples_per_source: 40 #5
     data_init: true
     #step_lr: 0.0000015
-    step_lr: 0.000005
+    step_lr: 0.00005
     #n_steps_each: 10
-    n_steps_each: 50
+    n_steps_each: 10
     ckpt_id:
     final_only: true
     fid: false
     denoise: true
-    num_samples4fid: 90000
+    num_samples4fid: 50000
     inpainting: false
     interpolation: false
     n_interpolations: 50
+    n_sigmas_skip: 3
 
   fast_fid:
     batch_size: 1000

@@ -1,8 +1,11 @@
-source:
+target:
   data:
-    dataset: "USPS"
-    image_size: 16
-    channels: 1
+    dataset: "Gaussian"
+    isotropic: true
+    dim: 784
+    rank: 784
+    mean:
+    cov:
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
@@ -10,11 +13,14 @@ source:
     rescaled: false
     num_workers: 0
 
-target:
+source:
   data:
-    dataset: "MNIST"
-    image_size: 16
-    channels: 1
+    dataset: "Gaussian-HD"
+    isotropic: false
+    dim: 784
+    rank: 784
+    mean_path: datasets/gaussian_statistics/MNIST-Mean-01.npy
+    cov_path: datasets/gaussian_statistics/MNIST-Cov-01.npy
     logit_transform: false
     uniform_dequantization: false
     gaussian_dequantization: false
@@ -24,7 +30,7 @@ target:
 
 transport:
   regularization: "entropy" # l2, entropy
-  coeff: 0.01
+  coeff: 0.5
   cost: "mean-l2-sq" # l2-sq, mean-l2-sq
 
 optim:
@@ -37,17 +43,9 @@ optim:
 
 model:
   architecture: "fcn"
-  hidden_layer_dims: [1024, 1024]
+  hidden_layers: [2048, 2048, 2048, 2048]
 
 training:
   batch_size: 1000
-  n_iters: 20001
+  n_iters: 5001
   snapshot_freq: 5000
-  sample_freq: 200
-
-compatibility:
-  log_path: pretrained/compatibility/densities/mnist_KL_0.01
-  ckpt_id: 5000
-  model:
-    architecture: "fcn"
-    hidden_layers: [1024, 1024]

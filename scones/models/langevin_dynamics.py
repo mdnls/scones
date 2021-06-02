@@ -2,10 +2,12 @@ import torch
 import numpy as np
 
 def anneal_Langevin_dynamics(tgt, source, scorenet, cpat, sigmas, n_steps_each=200, step_lr=0.000008,
-                             final_only=False, verbose=False, denoise=True):
+                             final_only=False, verbose=False, denoise=True, n_sigmas_skip=0):
     images = []
 
     for c, sigma in enumerate(sigmas):
+        if(c < n_sigmas_skip):
+            continue
         labels = torch.ones(tgt.shape[0], device=tgt.device) * c
         labels = labels.long()
         step_size = step_lr * (sigma / sigmas[-1]) ** 2
@@ -61,6 +63,8 @@ def anneal_Langevin_dynamics_inpainting(x_mod, refer_image, scorenet, sigmas, im
     half_refer_image = refer_image[..., :cols]
     with torch.no_grad():
         for c, sigma in enumerate(sigmas):
+            if(c < n_sigma_skip):
+                continue
             labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
             labels = labels.long()
             step_size = step_lr * (sigma / sigmas[-1]) ** 2

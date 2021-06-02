@@ -23,8 +23,10 @@ def parse_args_and_config():
                                                                'Will be the name of the log folder.')
     parser.add_argument('--comment', type=str, default='', help='A string for experiment comment')
     parser.add_argument('--verbose', type=str, default='info', help='Verbose level: info | debug | warning | critical')
+    parser.add_argument('--dry_run', action="store_true", help="If true, no code is excuted and the script is dry-run.")
+    parser.add_argument('--overwrite', action="store_true", help="If true, automatically overwrite without asking.")
     parser.add_argument('-i', '--image_folder', type=str, default='images', help="The folder name of samples")
-
+    parser.add_argument('--save_labels', action="store_true", help="If set to true then sampling will also save labels and bproj details of source.")
     args = parser.parse_args()
     args.log_path = os.path.join('scones', args.exp, 'logs', args.doc)
 
@@ -48,15 +50,20 @@ def parse_args_and_config():
     args.image_folder = os.path.join(args.exp, 'image_samples', args.image_folder)
     if not os.path.exists(args.image_folder):
         os.makedirs(args.image_folder)
+        if(args.save_labels):
+            os.makedirs(os.path.join(args.image_folder, "labels"))
     else:
-        overwrite = False
-        response = input("Image folder already exists. Overwrite? (Y/N) ")
-        if response.upper() == 'Y':
-            overwrite = True
+        overwrite = args.overwrite
+        if(not overwrite):
+            response = input("Image folder already exists. Overwrite? (Y/N) ")
+            if response.upper() == 'Y':
+                overwrite = True
 
         if overwrite:
             shutil.rmtree(args.image_folder)
             os.makedirs(args.image_folder)
+            if (args.save_labels):
+                os.makedirs(os.path.join(args.image_folder, "labels"))
         else:
             print("Output image folder exists. Program halted.")
             sys.exit(0)
@@ -104,14 +111,18 @@ def main():
     print(yaml.dump(config_dict, default_flow_style=False))
     print("<" * 80)
 
-    try:
-        if(config.target.data.dataset.upper() in ["GAUSSIAN", "GAUSSIAN-HD"]):
-            runner = GaussianRunner(args, config)
-        else:
-            runner = SCONESRunner(args, config)
-        runner.sample()
-    except:
-        logging.error(traceback.format_exc())
+    if(args.dry_run):
+        print("Dry run successful!")
+        print(f"GPU Availability: {torch.cuda.is_available()}")
+    else:
+        try:
+            if(config.target.data.dataset.upper() in ["GAUSSIAN", "GAUSSIAN-HD"]):
+                runner = GaussianRunner(args, config)
+            else:
+                runner = SCONESRunner(args, config)
+            runner.sample()
+        except:
+            logging.error(traceback.format_exc())
 
     return 0
 

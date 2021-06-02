@@ -7,12 +7,11 @@ import os
 from torchvision.utils import make_grid, save_image
 from torch.utils.data import DataLoader
 from ncsn.models.ncsnv2 import NCSNv2Deeper, NCSNv2, NCSNv2Deepest
-from ncsn.models.ncsn import NCSN, NCSNdeeper
+from ncsn.models.ncsn import NCSN, NCSNdeeper, ScaledNCSN
 from datasets import get_dataset, data_transform, inverse_data_transform
 from scones.models import (anneal_Langevin_dynamics,
                                                anneal_Langevin_dynamics_inpainting,
                                                anneal_Langevin_dynamics_interpolation)
-
 from ncsn.models import get_sigmas
 from ncsn.models.ema import EMAHelper
 from compatibility.models import get_compatibility as _get_compatibility
@@ -48,9 +47,11 @@ def get_scorenet(config):
         return NCSNv2Deepest(cnf_for_ncsn).to(config.device)
     elif config.target.data.dataset == 'LSUN':
         return NCSNv2Deeper(cnf_for_ncsn).to(config.device)
-    elif config.target.data.dataset == 'MNIST':
-        return NCSN(cnf_for_ncsn).to(config.device)
-
+    elif config.target.data.dataset == 'MNIST' or config.target.data.dataset == "USPS":
+        if (hasattr(config.ncsn.model, "original_image_size")):
+            return ScaledNCSN(cnf_for_ncsn).to(config.device)
+        else:
+            return NCSN(cnf_for_ncsn).to(config.device)
 class SCONESRunner():
     def __init__(self, args, config):
         self.args = args
@@ -76,9 +77,10 @@ class SCONESRunner():
         sigmas_th = get_sigmas(self.config.ncsn)
         sigmas = sigmas_th.cpu().numpy()
 
-        ncsn_states[0]["module.sigmas"] = sigmas_th
-        score.load_state_dict(ncsn_states[0], strict=True)
+        if("module.sigmas" in ncsn_states[0].keys()):
+            ncsn_states[0]["module.sigmas"] = sigmas_th
 
+        score.load_state_dict(ncsn_states[0], strict=True)
         score.eval()
 
         baryproj_data_init = (hasattr(self.config, "baryproj") and self.config.ncsn.sampling.data_init)
@@ -97,7 +99,6 @@ class SCONESRunner():
             bproj.load_state_dict(bproj_states[0])
             bproj = torch.nn.DataParallel(bproj)
             bproj.eval()
-
 
         if self.config.compatibility.ckpt_id is None:
             cpat_states = torch.load(os.path.join('scones', self.config.compatibility.log_path, 'checkpoint.pth'), map_location=self.config.device)
@@ -121,10 +122,16 @@ class SCONESRunner():
                                 batch_size=self.config.ncsn.sampling.sources_per_batch,
                                 shuffle=True,
                                 num_workers=self.config.source.data.num_workers)
+        data_iter = iter(dataloader)
 
-        (Xs, _) = next(iter(dataloader))
+        (Xs, labels) = next(data_iter)
         Xs_global = torch.cat([Xs] * self.config.ncsn.sampling.samples_per_source, dim=0).to(self.config.device)
         Xs_global = data_transform(self.config.source, Xs_global)
+
+        if(hasattr(self.config.ncsn.sampling, "n_sigmas_skip")):
+            n_sigmas_skip = self.config.ncsn.sampling.n_sigmas_skip
+        else:
+            n_sigmas_skip = 0
 
         if not self.config.ncsn.sampling.fid:
             if self.config.ncsn.sampling.inpainting:
@@ -229,9 +236,10 @@ class SCONESRunner():
             else:
                 if self.config.ncsn.sampling.data_init:
                     if(baryproj_data_init):
-                        init_Xt = bproj(Xs_global) + sigmas_th[0] * torch.randn_like(Xs_global)
+                        with torch.no_grad():
+                            init_Xt = (bproj(Xs_global) + sigmas_th[n_sigmas_skip] * torch.randn_like(Xs_global)).detach()
                     else:
-                        init_Xt = Xs_global + sigmas_th[0] * torch.randn_like(Xs_global)
+                        init_Xt = Xs_global + sigmas_th[n_sigmas_skip] * torch.randn_like(Xs_global)
 
                     init_Xt.requires_grad = True
                     init_Xt = init_Xt.to(self.config.device)
@@ -252,7 +260,8 @@ class SCONESRunner():
                                                        self.config.ncsn.sampling.step_lr,
                                                        verbose=True,
                                                        final_only=self.config.ncsn.sampling.final_only,
-                                                       denoise=self.config.ncsn.sampling.denoise)
+                                                       denoise=self.config.ncsn.sampling.denoise,
+                                                       n_sigmas_skip=n_sigmas_skip)
 
                 all_samples = torch.stack(all_samples, dim=0)
 
@@ -279,7 +288,13 @@ class SCONESRunner():
                 source_grid = make_grid(Xs, nrow=self.config.ncsn.sampling.sources_per_batch)
                 save_image(source_grid, os.path.join(self.args.image_folder, 'source_grid.png'))
 
+                bproj_of_source = make_grid(bproj(Xs), nrow=self.config.ncsn.sampling.sources_per_batch)
+                save_image(bproj_of_source, os.path.join(self.args.image_folder, 'bproj_sources.png'))
+
                 np.save(os.path.join(self.args.image_folder, 'sources.npy'), Xs.detach().cpu().numpy())
+                np.save(os.path.join(self.args.image_folder, 'source_labels.npy'), labels.detach().cpu().numpy())
+                np.save(os.path.join(self.args.image_folder, 'bproj.npy'), bproj(Xs).detach().cpu().numpy())
+                np.save(os.path.join(self.args.image_folder, 'samples.npy'), sample.detach().cpu().numpy())
 
         else:
             batch_size = self.config.ncsn.sampling.sources_per_batch * self.config.ncsn.sampling.samples_per_source
@@ -293,23 +308,28 @@ class SCONESRunner():
                 data_iter = iter(dataloader)
 
             img_id = 0
-            for _ in tqdm.tqdm(range(n_rounds), desc='Generating image samples for FID/inception score evaluation'):
+            for r in tqdm.tqdm(range(n_rounds), desc='Generating image samples for FID/inception score evaluation'):
                 if self.config.ncsn.sampling.data_init:
                     try:
-                        samples, _ = next(data_iter)
-                        samples = torch.cat([samples] * self.config.ncsn.sampling.samples_per_source, dim=0)
+                        init_samples, labels = next(data_iter)
+                        init_samples = torch.cat([init_samples] * self.config.ncsn.sampling.samples_per_source, dim=0)
+                        labels = torch.cat([labels] * self.config.ncsn.sampling.samples_per_source, dim=0)
                     except StopIteration:
                         data_iter = iter(dataloader)
-                        samples, _ = next(data_iter)
-                        samples = torch.cat([samples] * self.config.ncsn.sampling.samples_per_source, dim=0)
-                    samples = samples.to(self.config.device)
-                    samples = data_transform(self.config.target, samples)
+                        init_samples, labels = next(data_iter)
+                        init_samples = torch.cat([init_samples] * self.config.ncsn.sampling.samples_per_source, dim=0)
+                        labels = torch.cat([labels] * self.config.ncsn.sampling.samples_per_source, dim=0)
+
+                    init_samples = init_samples.to(self.config.device)
+                    init_samples = data_transform(self.config.target, init_samples)
 
                     if(baryproj_data_init):
                         with torch.no_grad():
-                            samples = bproj(samples).detach()
+                            bproj_samples = bproj(init_samples).detach()
+                    else:
+                        bproj_samples = torch.clone(init_samples).detach()
 
-                    samples = samples + sigmas_th[0] * torch.randn_like(samples)
+                    samples = bproj_samples + sigmas_th[n_sigmas_skip] * torch.randn_like(bproj_samples)
                     samples.requires_grad = True
                     samples = samples.to(self.config.device)
                 else:
@@ -317,6 +337,7 @@ class SCONESRunner():
                                          self.config.target.data.channels,
                                          self.config.target.data.image_size,
                                          self.config.target.data.image_size, device=self.config.device)
+                    init_samples = torch.clone(samples)
                     samples = data_transform(self.config.target, samples)
                     samples.requires_grad = True
                     samples = samples.to(self.config.device)
@@ -326,13 +347,21 @@ class SCONESRunner():
                                                        self.config.ncsn.sampling.step_lr,
                                                        verbose=True,
                                                        final_only=self.config.ncsn.sampling.final_only,
-                                                       denoise=self.config.ncsn.sampling.denoise)
+                                                       denoise=self.config.ncsn.sampling.denoise,
+                                                       n_sigmas_skip=n_sigmas_skip)
 
                 samples = all_samples[-1]
                 for img in samples:
                     img = inverse_data_transform(self.config.target, img)
                     save_image(img, os.path.join(self.args.image_folder, 'image_{}.png'.format(img_id)))
                     img_id += 1
+
+                if(self.args.save_labels):
+                    save_path = os.path.join(self.args.image_folder, 'labels')
+                    np.save(os.path.join(save_path, f'sources_{r}.npy'), init_samples.detach().cpu().numpy())
+                    np.save(os.path.join(save_path, f'source_labels_{r}.npy'), labels.detach().cpu().numpy())
+                    np.save(os.path.join(save_path, f"bproj_{r}.npy"), bproj_samples.detach().cpu().numpy())
+                    np.save(os.path.join(save_path, f"samples_{r}.npy"), samples.detach().cpu().numpy())
 
     def fast_fid(self):
         ### Test the fids of ensembled checkpoints.
@@ -352,6 +381,7 @@ class SCONESRunner():
                                 batch_size=self.config.ncsn.sampling.sources_per_batch,
                                 shuffle=True,
                                 num_workers=self.config.source.data.num_workers)
+        source_iter = iter(source_dataloader)
 
         score = get_scorenet(self.config.ncsn)
         score = torch.nn.DataParallel(score)
@@ -389,11 +419,11 @@ class SCONESRunner():
             os.makedirs(output_path, exist_ok=True)
             for i in range(num_iters):
                 try:
-                    (Xs, _) = next(iter(source_dataloader))
+                    (Xs, _) = next(source_iter)
                     Xs_global = torch.cat([Xs] * self.config.ncsn.sampling.samples_per_source, dim=0).to(self.config.device)
                 except StopIteration:
-                    source_dataloader = iter(source_dataset)
-                    (Xs, _) = next(iter(source_dataloader))
+                    source_iter = iter(source_dataloader)
+                    (Xs, _) = next(source_iter)
                     Xs_global = torch.cat([Xs] * self.config.ncsn.sampling.samples_per_source, dim=0).to(self.config.device)
 
                 init_samples = torch.rand(self.config.ncsn.fast_fid.batch_size, self.config.target.data.channels,
@@ -453,6 +483,7 @@ class SCONESRunner():
                                 batch_size=self.config.ncsn.sampling.sources_per_batch,
                                 shuffle=True,
                                 num_workers=self.config.source.data.num_workers)
+        source_iter = iter(source_dataloader)
 
         fids = {}
         for ckpt in tqdm.tqdm(range(self.config.ncsn.fast_fid.begin_ckpt, self.config.ncsn.fast_fid.end_ckpt + 1, 5000),
@@ -475,11 +506,11 @@ class SCONESRunner():
             os.makedirs(output_path, exist_ok=True)
             for i in range(num_iters):
                 try:
-                    (Xs, _) = next(iter(source_dataloader))
+                    (Xs, _) = next(source_iter)
                     Xs_global = torch.cat([Xs] * self.config.ncsn.sampling.samples_per_source, dim=0).to(self.config.device)
                 except StopIteration:
-                    source_dataloader = iter(source_dataset)
-                    (Xs, _) = next(iter(source_dataloader))
+                    source_iter = iter(source_dataloader)
+                    (Xs, _) = next(source_iter)
                     Xs_global = torch.cat([Xs] * self.config.ncsn.sampling.samples_per_source, dim=0).to(self.config.device)
 
                 init_samples = torch.rand(self.config.ncsn.fast_fid.batch_size, self.config.target.data.channels,

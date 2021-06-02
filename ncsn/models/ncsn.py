@@ -5,7 +5,6 @@ from functools import partial
 from .layers import *
 from .normalization import get_normalization
 
-
 class NCSN(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -186,3 +185,16 @@ class NCSNdeeper(nn.Module):
         output = self.act(output)
         output = self.end_conv(output)
         return output
+
+class ScaledNCSN(NCSN):
+    def __init__(self, config):
+        super().__init__(config)
+        self.input_size = config.data.image_size
+        self.original_size = config.model.original_image_size
+        self.to_orig = torch.nn.Upsample(size=self.original_size, mode='bilinear', align_corners=True)
+        self.to_inp = torch.nn.Upsample(size=self.input_size, mode='bilinear', align_corners=True)
+
+    def forward(self, x, y):
+        x_for_ncsn = self.to_orig(x)
+        score = super().forward(x_for_ncsn, y)
+        return self.to_inp(score)

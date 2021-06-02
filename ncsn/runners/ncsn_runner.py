@@ -10,7 +10,7 @@ import os
 from torchvision.utils import make_grid, save_image
 from torch.utils.data import DataLoader
 from ncsn.models.ncsnv2 import NCSNv2Deeper, NCSNv2, NCSNv2Deepest
-from ncsn.models.ncsn import NCSN, NCSNdeeper
+from ncsn.models.ncsn import NCSN, NCSNdeeper, ScaledNCSN
 from datasets import get_dataset, data_transform, inverse_data_transform
 from ncsn.losses import get_optimizer
 from ncsn.models import (anneal_Langevin_dynamics,
@@ -29,8 +29,11 @@ def get_model(config):
         return NCSNv2Deepest(config).to(config.device)
     elif config.data.dataset == 'LSUN':
         return NCSNv2Deeper(config).to(config.device)
-    elif config.data.dataset == 'MNIST':
-        return NCSN(config).to(config.device)
+    elif config.data.dataset == 'MNIST' or config.data.dataset == "USPS":
+        if(hasattr(config.model, "original_image_size")):
+            return ScaledNCSN(config).to(config.device)
+        else:
+            return NCSN(config).to(config.device)
 
 class NCSNRunner():
     def __init__(self, args, config):

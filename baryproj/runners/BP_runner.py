@@ -109,176 +109,64 @@ class BPRunner():
         return obj
 
     def sample(self):
-        if self.config.compatibility.ckpt_id is None:
-            cpat_states = torch.load(os.path.join('scones', self.config.compatibility.log_path, 'checkpoint.pth'), map_location=self.config.device)
-        else:
-            cpat_states = torch.load(os.path.join('scones', self.config.compatibility.log_path, f'checkpoint_{self.config.compatibility.ckpt_id}.pth'),
-                                map_location=self.config.device)
-
-        cpat = get_compatibility(self.config)
-        cpat.load_state_dict(cpat_states[0])
-
         source_dataset, _ = get_dataset(self.args, self.config.source)
-        dataloader = DataLoader(source_dataset,
-                                batch_size=self.config.sampling.batch_size,
-                                shuffle=True,
-                                num_workers=self.config.source.data.num_workers)
 
         baryproj = get_bary(self.config)
         baryproj.eval()
 
         if self.config.sampling.ckpt_id is None:
-            bp_states = torch.load(os.path.join('bp', self.args.log_path, 'checkpoint.pth'), map_location=self.config.device)
+            bp_states = torch.load(os.path.join(self.args.log_path, 'checkpoint.pth'), map_location=self.config.device)
         else:
-            bp_states = torch.load(os.path.join('bp', self.args.log_path, f'checkpoint_{self.config.compatibility.ckpt_id}.pth'),
+            bp_states = torch.load(os.path.join(self.args.log_path, f'checkpoint_{self.config.compatibility.ckpt_id}.pth'),
                                      map_location=self.config.device)
 
         baryproj.load_state_dict(bp_states[0])
 
-        batch_samples = []
-        for i in range(self.config.sampling.n_batches):
-            (Xs, _) = next(iter(dataloader))
-            Xs = data_transform(self.config.source, Xs)
-            transport = baryproj(Xs)
-            batch_samples.append(inverse_data_transform(self.config, transport))
+        if(not self.config.sampling.fid):
+            dataloader = DataLoader(source_dataset,
+                                    batch_size=self.config.sampling.batch_size,
+                                    shuffle=True,
+                                    num_workers=self.config.source.data.num_workers)
 
-        sample = torch.cat(batch_samples, dim=0)
+            batch_samples = []
+            for i in range(self.config.sampling.n_batches):
+                (Xs, _) = next(iter(dataloader))
+                Xs = data_transform(self.config.source, Xs)
+                transport = baryproj(Xs)
+                batch_samples.append(inverse_data_transform(self.config, transport))
 
-        image_grid = make_grid(sample[:min(64, len(sample))], nrow=8)
-        save_image(image_grid, os.path.join(self.args.image_folder, 'sample_grid.png'))
+            sample = torch.cat(batch_samples, dim=0)
 
-        source_grid = make_grid(Xs[:min(64, len(Xs))], nrow=8)
-        save_image(source_grid, os.path.join(self.args.image_folder, 'source_grid.png'))
+            image_grid = make_grid(sample[:min(64, len(sample))], nrow=8)
+            save_image(image_grid, os.path.join(self.args.image_folder, 'sample_grid.png'))
 
-        np.save(os.path.join(self.args.image_folder, 'sample.npy'), sample.detach().cpu().numpy())
-        np.save(os.path.join(self.args.image_folder, 'sources.npy'), Xs.detach().cpu().numpy())
+            source_grid = make_grid(Xs[:min(64, len(Xs))], nrow=8)
+            save_image(source_grid, os.path.join(self.args.image_folder, 'source_grid.png'))
 
-    def fast_fid(self):
-        '''
-        ### Test the fids of ensembled checkpoints.
-        ### Shouldn't be used for pretrained with ema
-        if self.config.fast_fid.ensemble:
-            if self.config.model.ema:
-                raise RuntimeError("Cannot apply ensembling to pretrained with EMA.")
-            self.fast_ensemble_fid()
-            return
+            np.save(os.path.join(self.args.image_folder, 'sample.npy'), sample.detach().cpu().numpy())
+            np.save(os.path.join(self.args.image_folder, 'sources.npy'), Xs.detach().cpu().numpy())
 
-        from ncsn.evaluation.fid_score import get_fid, get_fid_stats_path
-        import pickle
-        score = get_model(self.config)
-        score = torch.nn.DataParallel(score)
+        else:
+            batch_size = self.config.sampling.samples_per_batch
+            total_n_samples = self.config.sampling.num_samples4fid
+            n_rounds = total_n_samples // batch_size
 
-        sigmas_th = get_sigmas(self.config)
-        sigmas = sigmas_th.cpu().numpy()
+            dataloader = DataLoader(source_dataset,
+                                    batch_size=self.config.sampling.samples_per_batch,
+                                    shuffle=True,
+                                    num_workers=self.config.source.data.num_workers)
+            data_iter = iter(dataloader)
 
-        fids = {}
-        for ckpt in tqdm.tqdm(range(self.config.fast_fid.begin_ckpt, self.config.fast_fid.end_ckpt + 1, 5000),
-                              desc="processing ckpt"):
-            states = torch.load(os.path.join(self.args.log_path, f'checkpoint_{ckpt}.pth'),
-                                map_location=self.config.device)
+            img_id = 0
+            for _ in tqdm(range(n_rounds), desc='Generating image samples for FID/inception score evaluation'):
+                with torch.no_grad():
+                    (Xs, _) = next(data_iter)
+                    Xs = data_transform(self.config.source, Xs).to(self.config.device)
+                    transport = baryproj(Xs)
+                for img in transport:
+                    img = inverse_data_transform(self.config.target, img)
+                    save_image(img, os.path.join(self.args.image_folder, 'image_{}.png'.format(img_id)))
+                    img_id += 1
+                del Xs
+                del transport
 
-            if self.config.model.ema:
-                ema_helper = EMAHelper(mu=self.config.model.ema_rate)
-                ema_helper.register(score)
-                ema_helper.load_state_dict(states[-1])
-                ema_helper.ema(score)
-            else:
-                score.load_state_dict(states[0])
-
-            score.eval()
-
-            num_iters = self.config.fast_fid.num_samples // self.config.fast_fid.batch_size
-            output_path = os.path.join(self.args.image_folder, 'ckpt_{}'.format(ckpt))
-            os.makedirs(output_path, exist_ok=True)
-            for i in range(num_iters):
-                init_samples = torch.rand(self.config.fast_fid.batch_size, self.config.data.channels,
-                                          self.config.data.image_size, self.config.data.image_size,
-                                          device=self.config.device)
-                init_samples = data_transform(self.config, init_samples)
-
-                all_samples = anneal_Langevin_dynamics(init_samples, score, sigmas,
-                                                       self.config.fast_fid.n_steps_each,
-                                                       self.config.fast_fid.step_lr,
-                                                       verbose=self.config.fast_fid.verbose,
-                                                       denoise=self.config.sampling.denoise)
-
-                final_samples = all_samples[-1]
-                for id, sample in enumerate(final_samples):
-                    sample = sample.view(self.config.data.channels,
-                                         self.config.data.image_size,
-                                         self.config.data.image_size)
-
-                    sample = inverse_data_transform(self.config, sample)
-
-                    save_image(sample, os.path.join(output_path, 'sample_{}.png'.format(id)))
-
-            stat_path = get_fid_stats_path(self.args, self.config, download=True)
-            fid = get_fid(stat_path, output_path)
-            fids[ckpt] = fid
-            print("ckpt: {}, fid: {}".format(ckpt, fid))
-
-        with open(os.path.join(self.args.image_folder, 'fids.pickle'), 'wb') as handle:
-            pickle.dump(fids, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        '''
-
-    def fast_ensemble_fid(self):
-        '''
-        from ncsn.evaluation.fid_score import get_fid, get_fid_stats_path
-        import pickle
-
-        num_ensembles = 5
-        scores = [NCSN(self.config).to(self.config.device) for _ in range(num_ensembles)]
-        scores = [torch.nn.DataParallel(score) for score in scores]
-
-        sigmas_th = get_sigmas(self.config)
-        sigmas = sigmas_th.cpu().numpy()
-
-        fids = {}
-        for ckpt in tqdm.tqdm(range(self.config.fast_fid.begin_ckpt, self.config.fast_fid.end_ckpt + 1, 5000),
-                              desc="processing ckpt"):
-            begin_ckpt = max(self.config.fast_fid.begin_ckpt, ckpt - (num_ensembles - 1) * 5000)
-            index = 0
-            for i in range(begin_ckpt, ckpt + 5000, 5000):
-                states = torch.load(os.path.join(self.args.log_path, f'checkpoint_{i}.pth'),
-                                    map_location=self.config.device)
-                scores[index].load_state_dict(states[0])
-                scores[index].eval()
-                index += 1
-
-            def scorenet(x, labels):
-                num_ckpts = (ckpt - begin_ckpt) // 5000 + 1
-                return sum([scores[i](x, labels) for i in range(num_ckpts)]) / num_ckpts
-
-            num_iters = self.config.fast_fid.num_samples // self.config.fast_fid.batch_size
-            output_path = os.path.join(self.args.image_folder, 'ckpt_{}'.format(ckpt))
-            os.makedirs(output_path, exist_ok=True)
-            for i in range(num_iters):
-                init_samples = torch.rand(self.config.fast_fid.batch_size, self.config.data.channels,
-                                          self.config.data.image_size, self.config.data.image_size,
-                                          device=self.config.device)
-                init_samples = data_transform(self.config, init_samples)
-
-                all_samples = anneal_Langevin_dynamics(init_samples, scorenet, sigmas,
-                                                       self.config.fast_fid.n_steps_each,
-                                                       self.config.fast_fid.step_lr,
-                                                       verbose=self.config.fast_fid.verbose,
-                                                       denoise=self.config.sampling.denoise)
-
-                final_samples = all_samples[-1]
-                for id, sample in enumerate(final_samples):
-                    sample = sample.view(self.config.data.channels,
-                                         self.config.data.image_size,
-                                         self.config.data.image_size)
-
-                    sample = inverse_data_transform(self.config, sample)
-
-                    save_image(sample, os.path.join(output_path, 'sample_{}.png'.format(id)))
-
-            stat_path = get_fid_stats_path(self.args, self.config, download=True)
-            fid = get_fid(stat_path, output_path)
-            fids[ckpt] = fid
-            print("ckpt: {}, fid: {}".format(ckpt, fid))
-
-        with open(os.path.join(self.args.image_folder, 'fids.pickle'), 'wb') as handle:
-            pickle.dump(fids, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        '''

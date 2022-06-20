@@ -21,11 +21,23 @@ def get_compatibility(config):
     if(config.model.architecture.upper() == "FCN"):
         source_critic = FCImageCritic(input_im_size = source_shape[1],
                                       input_channels = source_shape[0],
-                                      hidden_layer_dims = config.model.hidden_layers).to(config.device)
+                                      hidden_layer_dims = config.model.hidden_layers,
+                                      bias=True).to(config.device)
+
+        target_critic  =  FCImageCritic(input_im_size = target_shape[1],
+                                        input_channels = target_shape[0],
+                                        hidden_layer_dims = config.model.hidden_layers,
+                                        bias=True).to(config.device)
+    elif(config.model.architecture.upper() == "FCN-nobias"):
+        source_critic = FCImageCritic(input_im_size = source_shape[1],
+                                      input_channels = source_shape[0],
+                                      hidden_layer_dims = config.model.hidden_layers,
+                                      bias=False).to(config.device)
 
         target_critic  =  FCImageCritic(input_im_size = target_shape[1],
                                       input_channels = target_shape[0],
-                                      hidden_layer_dims = config.model.hidden_layers).to(config.device)
+                                      hidden_layer_dims = config.model.hidden_layers,
+                                        bias=False).to(config.device)
 
     elif(config.model.architecture.upper() == "CNN"):
         source_critic = ImageCritic(input_im_size = source_shape[1],
@@ -37,6 +49,9 @@ def get_compatibility(config):
                                     channels = [target_shape[0]] + config.model.hidden_layers,
                                     layers = len(config.model.hidden_layers),
                                     batchnorm = False).to(config.device)
+    elif (config.model.architecture.upper() == "QUADRATIC"):
+        source_critic = QuadraticImageCritic(input_im_size=source_shape[1], input_channels=source_shape[0]).to(config.device)
+        target_critic = QuadraticImageCritic(input_im_size=target_shape[1], input_channels=target_shape[0]).to(config.device)
     else:
         raise ValueError(f"{config.model.architecture} is not a valid choice of architecture.")
 

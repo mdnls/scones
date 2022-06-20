@@ -1,0 +1,52 @@
+meta:
+  divergence: X2
+  regularization: 0.001
+  task: identity
+model:
+  architecture: fcn
+  hidden_layers:
+  - 2048
+  - 2048
+  - 2048
+  - 2048
+  - 2048
+  - 2048
+  - 2048
+  - 2048
+optim:
+  amsgrad: false
+  beta1: 0.9
+  eps: 1.0e-08
+  lr: 1.0e-05
+  optimizer: Adam
+  weight_decay: 0.0
+source:
+  data:
+    channels: 3
+    dataset: CELEBA-even
+    gaussian_dequantization: false
+    image_size: 64
+    logit_transform: false
+    num_workers: 12
+    random_flip: true
+    rescaled: false
+    uniform_dequantization: false
+target:
+  data:
+    channels: 3
+    dataset: CELEBA-odd
+    gaussian_dequantization: false
+    image_size: 64
+    logit_transform: false
+    num_workers: 12
+    random_flip: true
+    rescaled: false
+    uniform_dequantization: false
+training:
+  batch_size: 1000
+  n_iters: 5001
+  snapshot_freq: 5000
+transport:
+  coeff: 0.001
+  cost: mean-l2-sq
+  regularization: l2

@@ -12,7 +12,6 @@ from scones.runners import *
 import os
 from scones.runners import GaussianRunner
 
-
 def parse_args_and_config():
     parser = argparse.ArgumentParser(description=globals()['__doc__'])
 
@@ -31,7 +30,7 @@ def parse_args_and_config():
     args.log_path = os.path.join('scones', args.exp, 'logs', args.doc)
 
     # parse config file
-    with open(os.path.join('scones/configs', args.config), 'r') as f:
+    with open(os.path.join('scones/conf', args.config), 'r') as f:
         config = yaml.load(f)
     new_config = dict2namespace(config)
 

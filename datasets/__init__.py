@@ -32,7 +32,13 @@ def get_dataset(args, config):
                                 transforms.Resize(config.data.image_size),
                                 transforms.ToTensor()]))
 
-    elif config.data.dataset == 'CELEBA':
+    elif config.data.dataset in ['CELEBA', 'CELEBA-even', 'CELEBA-odd']:
+        subset = "all"
+        if(config.data.dataset == "CELEBA-even"):
+            subset = "even"
+        elif(config.data.dataset == "CELEBA-odd"):
+            subset = "odd"
+
         if config.data.random_flip:
             dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='train',
                              transform=transforms.Compose([
@@ -40,23 +46,33 @@ def get_dataset(args, config):
                                  transforms.Resize(config.data.image_size),
                                  transforms.RandomHorizontalFlip(),
                                  transforms.ToTensor(),
-                             ]), download=True)
+                             ]), subset=subset,
+                             download=True)
         else:
             dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='train',
                              transform=transforms.Compose([
                                  transforms.CenterCrop(140),
                                  transforms.Resize(config.data.image_size),
                                  transforms.ToTensor(),
-                             ]), download=True)
+                             ]),
+                             subset=subset,
+                             download=True)
 
         test_dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='test',
                               transform=transforms.Compose([
                                   transforms.CenterCrop(140),
                                   transforms.Resize(config.data.image_size),
                                   transforms.ToTensor(),
-                              ]), download=True)
+                              ]), subset=subset,
+                              download=True)
 
-    elif (config.data.dataset == "CELEBA-32px"):
+    elif (config.data.dataset in ["CELEBA-32px", "CELEBA-32px-even", "CELEBA-32px-odd"]):
+        subset = "all"
+        if (config.data.dataset == "CELEBA-32px-even"):
+            subset = "even"
+        elif (config.data.dataset == "CELEBA-32px-odd"):
+            subset = "odd"
+
         if config.data.random_flip:
             dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='train',
                              transform=transforms.Compose([
@@ -65,7 +81,8 @@ def get_dataset(args, config):
                                  transforms.Resize(config.data.image_size),
                                  transforms.RandomHorizontalFlip(),
                                  transforms.ToTensor(),
-                             ]), download=True)
+                             ]), subset=subset,
+                             download=True)
         else:
             dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='train',
                              transform=transforms.Compose([
@@ -73,7 +90,8 @@ def get_dataset(args, config):
                                  transforms.Resize(32),
                                  transforms.Resize(config.data.image_size),
                                  transforms.ToTensor(),
-                             ]), download=True)
+                             ]), subset=subset,
+                             download=True)
 
         test_dataset = CelebA(root=os.path.join('datasets', 'celeba'), split='test',
                               transform=transforms.Compose([
@@ -81,7 +99,8 @@ def get_dataset(args, config):
                                   transforms.Resize(32),
                                   transforms.Resize(config.data.image_size),
                                   transforms.ToTensor(),
-                              ]), download=True)
+                              ]), subset=subset,
+                              download=True)
 
 
     elif(config.data.dataset == "CELEBA-8px"):

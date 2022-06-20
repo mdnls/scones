@@ -11,23 +11,19 @@ class Gaussian(data.Dataset):
     def __init__(self, mean, cov, device, shape=None, iid_unit=False):
         self.device = device
         self.mean = torch.FloatTensor(mean).to(device)
-        self.cov = torch.FloatTensor(np.abs(scipy.linalg.sqrtm(cov))).to(device)
+        self.cov = torch.FloatTensor(cov).to(device)
         self.iid_unit = iid_unit
-        self.dist = multivariate_normal(seed=2039)
+        self.dist = multivariate_normal(mean=mean, cov=cov, seed=2039)
 
         if(iid_unit and shape is None):
             self.shape = (1,)
         elif(shape is None):
-            self.shape = (len(self.mean), 1, 1)
+            self.shape = mean.shape
         else:
             self.shape = shape
 
     def __getitem__(self, index):
-        if(self.iid_unit):
-            return torch.FloatTensor(self.dist.rvs(size=self.shape).astype(np.float)).to(self.device), 0
-        else:
-            sample = torch.FloatTensor(self.dist.rvs(size=(len(self.mean), 1))).to(self.device)
-            return (self.cov @ sample + self.mean), 0
+        return torch.FloatTensor(self.dist.rvs().astype(np.float)).to(self.device), 0
 
     def __len__(self):
         return int(1e+4)

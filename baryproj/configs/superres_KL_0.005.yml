@@ -1,0 +1,66 @@
+compatibility:
+  ckpt_id: null
+  log_path: pretrained/compatibility/camera_ready/superres_KL_0.005
+  model:
+    architecture: fcn
+    hidden_layers:
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+meta:
+  divergence: KL
+  regularization: 0.005
+  task: superres
+model:
+  architecture: res
+  ngf: 48
+  nonlinearity: elu
+  normalization: InstanceNorm++
+optim:
+  amsgrad: false
+  beta1: 0.9
+  eps: 1.0e-08
+  lr: 1.0e-06
+  optimizer: Adam
+  weight_decay: 0.0
+sampling:
+  ckpt_id: null
+  fid: true
+  num_samples4fid: 5000
+  samples_per_batch: 100
+source:
+  data:
+    channels: 3
+    dataset: CELEBA-32px-even
+    gaussian_dequantization: false
+    image_size: 64
+    logit_transform: false
+    num_workers: 0
+    random_flip: true
+    rescaled: false
+    uniform_dequantization: false
+target:
+  data:
+    channels: 3
+    dataset: CELEBA-odd
+    gaussian_dequantization: false
+    image_size: 64
+    logit_transform: false
+    num_workers: 0
+    random_flip: true
+    rescaled: false
+    uniform_dequantization: false
+training:
+  batch_size: 64
+  n_iters: 20000
+  sample_freq: 200
+  snapshot_freq: 5000
+transport:
+  coeff: 0.005
+  cost: mean-l2-sq
+  regularization: entropy

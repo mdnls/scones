@@ -41,7 +41,7 @@ def get_compatibility(config):
 def get_scorenet(config):
     cnf_for_ncsn = copy.deepcopy(config.ncsn)
     cnf_for_ncsn.data = config.target.data
-    if config.target.data.dataset == 'CIFAR10' or config.target.data.dataset == 'CELEBA':
+    if config.target.data.dataset == 'CIFAR10' or config.target.data.dataset in ['CELEBA', 'CELEBA-even', 'CELEBA-odd']:
         return NCSNv2(cnf_for_ncsn).to(config.device)
     elif config.target.data.dataset == "FFHQ":
         return NCSNv2Deepest(cnf_for_ncsn).to(config.device)
@@ -135,103 +135,8 @@ class SCONESRunner():
 
         if not self.config.ncsn.sampling.fid:
             if self.config.ncsn.sampling.inpainting:
-
-                ''' NCSN INPAINTING CODE. EITHER PATCH THIS FOR SCONES OR REMOVE IT. 
-                
-                data_iter = iter(dataloader)
-                refer_images, _ = next(data_iter)
-                refer_images = refer_images.to(self.config.device)
-                width = int(np.sqrt(self.config.sampling.batch_size))
-                init_samples = torch.rand(width, width, self.config.data.channels,
-                                          self.config.data.image_size,
-                                          self.config.data.image_size,
-                                          device=self.config.device)
-                init_samples = data_transform(self.config, init_samples)
-                all_samples = anneal_Langevin_dynamics_inpainting(init_samples, refer_images[:width, ...], score,
-                                                                  sigmas,
-                                                                  self.config.data.image_size,
-                                                                  self.config.sampling.n_steps_each,
-                                                                  self.config.sampling.step_lr)
-
-                torch.save(refer_images[:width, ...], os.path.join(self.args.image_folder, 'refer_image.pth'))
-                refer_images = refer_images[:width, None, ...].expand(-1, width, -1, -1, -1).reshape(-1,
-                                                                                                     *refer_images.shape[
-                                                                                                      1:])
-                save_image(refer_images, os.path.join(self.args.image_folder, 'refer_image.png'), nrow=width)
-
-                if not self.config.sampling.final_only:
-                    for i, sample in enumerate(tqdm.tqdm(all_samples)):
-                        sample = sample.view(self.config.sampling.batch_size, self.config.data.channels,
-                                             self.config.data.image_size,
-                                             self.config.data.image_size)
-
-                        sample = inverse_data_transform(self.config, sample)
-
-                        image_grid = make_grid(sample, int(np.sqrt(self.config.sampling.batch_size)))
-                        save_image(image_grid, os.path.join(self.args.image_folder, 'image_grid_{}.png'.format(i)))
-                        torch.save(sample, os.path.join(self.args.image_folder, 'completion_{}.pth'.format(i)))
-                else:
-                    sample = all_samples[-1].view(self.config.sampling.batch_size, self.config.data.channels,
-                                                  self.config.data.image_size,
-                                                  self.config.data.image_size)
-
-                    sample = inverse_data_transform(self.config, sample)
-
-                    image_grid = make_grid(sample, int(np.sqrt(self.config.sampling.batch_size)))
-                    save_image(image_grid, os.path.join(self.args.image_folder,
-                                                        'image_grid_{}.png'.format(self.config.ncsn.sampling.ckpt_id)))
-                    torch.save(sample, os.path.join(self.args.image_folder,
-                                                    'completion_{}.pth'.format(self.config.sampling.ckpt_id)))
-                '''
-
                 raise NotImplementedError("Inpainting with SCONES is not currently implemented.")
             elif self.config.ncsn.sampling.interpolation:
-                ''' NCSN INTERPOLATION CODE. EITHER PATCH THIS FOR SCONES OR REMOVE IT. 
-                
-                if self.config.sampling.data_init:
-                    data_iter = iter(dataloader)
-                    samples, _ = next(data_iter)
-                    samples = samples.to(self.config.device)
-                    samples = data_transform(self.config, samples)
-                    init_samples = samples + sigmas_th[0] * torch.randn_like(samples)
-
-                else:
-                    init_samples = torch.rand(self.config.sampling.batch_size, self.config.data.channels,
-                                              self.config.data.image_size, self.config.data.image_size,
-                                              device=self.config.device)
-                    init_samples = data_transform(self.config, init_samples)
-
-                all_samples = anneal_Langevin_dynamics_interpolation(init_samples, score, sigmas,
-                                                                     self.config.sampling.n_interpolations,
-                                                                     self.config.sampling.n_steps_each,
-                                                                     self.config.sampling.step_lr, verbose=True,
-                                                                     final_only=self.config.sampling.final_only)
-
-                if not self.config.sampling.final_only:
-                    for i, sample in tqdm.tqdm(enumerate(all_samples), total=len(all_samples),
-                                               desc="saving image samples"):
-                        sample = sample.view(sample.shape[0], self.config.data.channels,
-                                             self.config.data.image_size,
-                                             self.config.data.image_size)
-
-                        sample = inverse_data_transform(self.config, sample)
-
-                        image_grid = make_grid(sample, nrow=self.config.sampling.n_interpolations)
-                        save_image(image_grid, os.path.join(self.args.image_folder, 'image_grid_{}.png'.format(i)))
-                        torch.save(sample, os.path.join(self.args.image_folder, 'samples_{}.pth'.format(i)))
-                else:
-                    sample = all_samples[-1].view(all_samples[-1].shape[0], self.config.data.channels,
-                                                  self.config.data.image_size,
-                                                  self.config.data.image_size)
-
-                    sample = inverse_data_transform(self.config, sample)
-
-                    image_grid = make_grid(sample, self.config.sampling.n_interpolations)
-                    save_image(image_grid, os.path.join(self.args.image_folder,
-                                                        'image_grid_{}.png'.format(self.config.sampling.ckpt_id)))
-                    torch.save(sample, os.path.join(self.args.image_folder,
-                                                    'samples_{}.pth'.format(self.config.sampling.ckpt_id)))
-                '''
                 raise NotImplementedError("Interpolation with SCONES is not currently implemented.")
             else:
                 if self.config.ncsn.sampling.data_init:
@@ -267,8 +172,8 @@ class SCONESRunner():
 
                 if not self.config.ncsn.sampling.final_only:
                     all_samples = all_samples.view((-1,
-                                                    self.config.ncsn.sampling.sources_per_batch,
                                                     self.config.ncsn.sampling.samples_per_source,
+                                                    self.config.ncsn.sampling.sources_per_batch,
                                                     self.config.target.data.channels,
                                                     self.config.target.data.image_size,
                                                     self.config.target.data.image_size))
@@ -288,13 +193,14 @@ class SCONESRunner():
                 source_grid = make_grid(Xs, nrow=self.config.ncsn.sampling.sources_per_batch)
                 save_image(source_grid, os.path.join(self.args.image_folder, 'source_grid.png'))
 
-                bproj_of_source = make_grid(bproj(Xs), nrow=self.config.ncsn.sampling.sources_per_batch)
-                save_image(bproj_of_source, os.path.join(self.args.image_folder, 'bproj_sources.png'))
+                if(self.config.ncsn.sampling.data_init):
+                    bproj_of_source = make_grid(bproj(Xs), nrow=self.config.ncsn.sampling.sources_per_batch)
+                    save_image(bproj_of_source, os.path.join(self.args.image_folder, 'bproj_sources.png'))
+                    np.save(os.path.join(self.args.image_folder, 'bproj.npy'), bproj(Xs).detach().cpu().numpy())
 
                 np.save(os.path.join(self.args.image_folder, 'sources.npy'), Xs.detach().cpu().numpy())
                 np.save(os.path.join(self.args.image_folder, 'source_labels.npy'), labels.detach().cpu().numpy())
-                np.save(os.path.join(self.args.image_folder, 'bproj.npy'), bproj(Xs).detach().cpu().numpy())
-                np.save(os.path.join(self.args.image_folder, 'samples.npy'), sample.detach().cpu().numpy())
+                np.save(os.path.join(self.args.image_folder, 'samples.npy'), all_samples[-1].detach().cpu().numpy())
 
         else:
             batch_size = self.config.ncsn.sampling.sources_per_batch * self.config.ncsn.sampling.samples_per_source
@@ -308,7 +214,7 @@ class SCONESRunner():
                 data_iter = iter(dataloader)
 
             img_id = 0
-            for r in tqdm.tqdm(range(n_rounds), desc='Generating image samples for FID/inception score evaluation'):
+            for r in tqdm.tqdm(range(n_rounds), desc=f'Generating image samples for FID/inception score evaluation, {self.args.image_folder}'):
                 if self.config.ncsn.sampling.data_init:
                     try:
                         init_samples, labels = next(data_iter)
@@ -325,7 +231,7 @@ class SCONESRunner():
 
                     if(baryproj_data_init):
                         with torch.no_grad():
-                            bproj_samples = bproj(init_samples).detach()
+                            bproj_samples = torch.clone(bproj(init_samples)).detach()
                     else:
                         bproj_samples = torch.clone(init_samples).detach()
 
@@ -358,9 +264,10 @@ class SCONESRunner():
 
                 if(self.args.save_labels):
                     save_path = os.path.join(self.args.image_folder, 'labels')
+                    if(self.config.ncsn.sampling.data_init):
+                        np.save(os.path.join(save_path, f"bproj_{r}.npy"), bproj_samples.detach().cpu().numpy())
                     np.save(os.path.join(save_path, f'sources_{r}.npy'), init_samples.detach().cpu().numpy())
                     np.save(os.path.join(save_path, f'source_labels_{r}.npy'), labels.detach().cpu().numpy())
-                    np.save(os.path.join(save_path, f"bproj_{r}.npy"), bproj_samples.detach().cpu().numpy())
                     np.save(os.path.join(save_path, f"samples_{r}.npy"), samples.detach().cpu().numpy())
 
     def fast_fid(self):

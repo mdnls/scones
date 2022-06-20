@@ -38,7 +38,7 @@ test:
   batch_size: 100
 
 data:
-  dataset: "CELEBA"
+  dataset: "CELEBA-odd"
   image_size: 64
   channels: 3
   logit_transform: false

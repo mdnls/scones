@@ -30,8 +30,8 @@ def anneal_Langevin_dynamics(tgt, source, scorenet, cpat, sigmas, n_steps_each=2
             if not final_only:
                 images.append(tgt.to('cpu'))
             if verbose:
-                print("level: {}, step_size: {}, grad_norm: {}, cpat_grad_norm: {}, image_norm: {}, snr: {}, grad_mean_norm: {}".format(
-                    c, step_size, grad_norm.item(), cpat_grad_norm.item(), image_norm.item(), snr.item(), grad_mean_norm.item()))
+                print("level: {}, noise level:{}, step_size: {}, grad_norm: {}, cpat_grad_norm: {}, image_norm: {}, snr: {}, grad_mean_norm: {}".format(
+                    c, round(sigma, 4), step_size, grad_norm.item(), cpat_grad_norm.item(), image_norm.item(), snr.item(), grad_mean_norm.item()))
 
     if denoise:
         cpat_score = cpat.score(source, tgt).detach()
@@ -140,22 +140,73 @@ def Langevin_dynamics(tgt, source, scorenet, cpat, n_steps, step_lr=0.000008, fi
         cpat_grad = cpat.score(source, tgt)
 
         grad_norm = torch.norm(grad.view(grad.shape[0], -1), dim=-1).mean()
-        noise_norm = torch.norm(noise.view(noise.shape[0], -1), dim=-1).mean()
         cpat_grad_norm = torch.norm(cpat_grad.view(cpat_grad.shape[0], -1), dim=-1).mean()
 
         tgt = tgt + step_lr * (grad + cpat_grad) + noise * np.sqrt(step_lr * 2)
 
-        image_norm = torch.norm(tgt.view(tgt.shape[0], -1), dim=-1).mean()
-        snr = np.sqrt(step_lr / 2.) * grad_norm / noise_norm
-        grad_mean_norm = torch.norm(grad.mean(dim=0).view(-1)) ** 2
-
         if not final_only and (s % sample_every == 0):
             images.append(tgt.to('cpu'))
         if verbose:
-            print("step: {}, grad_norm: {}, cpat_grad_norm: {}, image_norm: {}, snr: {}, grad_mean_norm: {}".format(
-                s, grad_norm.item(), cpat_grad_norm.item(), image_norm.item(), snr.item(), grad_mean_norm.item()))
+            cov = np.cov(tgt.detach().cpu().numpy().reshape((-1, 2)), rowvar=False)
+            print("step: {}, grad_norm: {}, cpat_grad_norm: {}, cov: {}".format(s, grad_norm.item(), cpat_grad_norm.item(), cov))
 
     if final_only:
         return [tgt.to('cpu')]
     else:
         return images
+
+def joint_marginal_Langevin_dynamics(tgt, source, scorenet, cpat, n_steps, step_lr=0.000008, final_only=False, sample_every=1, verbose=False):
+    print("SAMPLING JOINT MARGINAL LANGEVIN")
+    images = []
+
+    for s in range(n_steps):
+        with torch.no_grad():
+            noise = torch.randn_like(tgt)
+
+        cpat_grad = cpat.score(source, tgt)
+
+        cpat_grad_norm = torch.norm(cpat_grad.view(cpat_grad.shape[0], -1), dim=-1).mean()
+
+        tgt = tgt + step_lr * (cpat_grad) + noise * np.sqrt(step_lr * 2)
+
+        if not final_only and (s % sample_every == 0):
+            images.append(tgt.to('cpu'))
+        if verbose:
+            cov = np.cov(tgt.detach().cpu().numpy().reshape((-1, 2)), rowvar=False)
+            print("step: {}, cpat_grad_norm: {}, cov: {}".format(s, cpat_grad_norm.item(), cov))
+
+    if final_only:
+        return [tgt.to('cpu')]
+    else:
+        return images
+
+def compare_Langevin_dynamics(tgt, source, scorenet, cpat, n_steps, step_lr=0.000008, final_only=False,
+                                  sample_every=1, verbose=False):
+        images = []
+        cpat_trained, cpat_true = cpat
+
+        for s in range(n_steps):
+            with torch.no_grad():
+                grad = scorenet(tgt)
+                noise = torch.randn_like(tgt)
+            cpat_grad_r, cpat_grad_s = cpat_true.score(source, tgt)
+            cpat_grad = cpat_grad_r + cpat_grad_s
+            est_cpat_grad = cpat_trained.score(source, tgt)
+
+            grad_norm = torch.norm(grad.view(grad.shape[0], -1), dim=-1).mean()
+            cpat_grad_norm = torch.norm(cpat_grad.view(cpat_grad.shape[0], -1), dim=-1).mean()
+            est_vs_true_norm = torch.norm((cpat_grad - est_cpat_grad).view(cpat_grad.shape[0], -1), dim=-1).mean()
+            tgt = tgt + step_lr * (grad + est_cpat_grad) + noise * np.sqrt(step_lr * 2)
+
+            if not final_only and (s % sample_every == 0):
+                images.append(tgt.to('cpu'))
+            if verbose:
+                cov = np.cov(tgt.detach().cpu().numpy().reshape((-1, 2)), rowvar=False)
+                print("step: {}, grad_norm: {}, cpat_grad_norm: {}, est vs true error: {}, cov: {}".format(s,
+                                            grad_norm.item(), cpat_grad_norm.item(), est_vs_true_norm.item(), cov))
+
+        if final_only:
+            return [tgt.to('cpu')]
+        else:
+            return images
+

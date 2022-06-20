@@ -1,17 +1,39 @@
 import torch
 import torch.nn as nn
+import numpy as np
+import scipy.linalg
 from .simple import ReLU_MLP, ReLU_CNN
 
+class QuadraticImageCritic(nn.Module):
+    def __init__(self, input_im_size, input_channels, weight_init=None):
+        super(QuadraticImageCritic, self).__init__()
+        self.input_W = input_im_size
+        self.input_C = input_channels
+        dim = self.input_W**2 * self.input_C
+
+        if(weight_init is None):
+            sqrt_weight_init = (1/10) * np.eye(dim)
+        else:
+            sqrt_weight_init = scipy.linalg.sqrtm(weight_init)
+
+        self.sqrt_weight = nn.Parameter(data=torch.FloatTensor(sqrt_weight_init), requires_grad=True)
+    def forward(self, inp_image):
+        imdim = self.input_W**2 * self.input_C
+        img_vec = inp_image.reshape((-1, imdim, 1))
+        return (img_vec.transpose(1, 2) @ ((-0.5) * (0.5) * (self.sqrt_weight.T + self.sqrt_weight)) @ img_vec).view((-1, 1))
+
+
 class FCImageCritic(nn.Module):
-    def __init__(self, input_im_size, input_channels, hidden_layer_dims):
+    def __init__(self, input_im_size, input_channels, hidden_layer_dims, bias=True):
         super(FCImageCritic, self).__init__()
         self.input_W = input_im_size
         self.input_C = input_channels
         self.hidden_layer_dims = hidden_layer_dims
         self.inp_projector = nn.Linear(in_features=self.input_W ** 2 * self.input_C,
-                                       out_features=hidden_layer_dims[0])
-        self.outp_projector = nn.Linear(in_features = hidden_layer_dims[-1], out_features=1)
-        self.hidden = ReLU_MLP(layer_dims=hidden_layer_dims)
+                                       out_features=hidden_layer_dims[0],
+                                       bias=bias)
+        self.outp_projector = nn.Linear(in_features = hidden_layer_dims[-1], out_features=1, bias=bias)
+        self.hidden = ReLU_MLP(layer_dims=hidden_layer_dims,  bias=bias)
     def forward(self, inp_image):
         return self.outp_projector(nn.functional.relu(self.hidden(self.inp_projector(inp_image.flatten(start_dim=1)))))
 

@@ -1,0 +1,49 @@
+{
+  "manifest": [
+    {
+      "todo":  "all_combinations",
+      "items": [
+        [
+          {"meta": {"task": "superres"}, "source": {"data": {"dataset":  "CELEBA-32px-even"}}},
+          {"meta": {"task": "identity"}, "source": {"data": {"dataset":  "CELEBA-even"}}}
+        ],
+        [
+          {"meta": {"divergence": "KL"}, "transport":  {"regularization":  "entropy"}},
+          {"meta": {"divergence": "X2"}, "transport":  {"regularization":  "l2"}}
+        ],
+        [
+          {"meta": {"regularization": 0.1}, "transport": {"coeff": 0.1}},
+          {"meta": {"regularization": 0.01}, "transport": {"coeff": 0.01}}
+        ]
+      ]
+    },
+    {"todo":  "all_combinations",
+    "items":  [
+        [
+          {"meta": {"task": "superres"}, "source": {"data": {"dataset":  "CELEBA-32px-even"}}},
+          {"meta": {"task": "identity"}, "source": {"data": {"dataset":  "CELEBA-even"}}}
+        ],
+        [
+          {"meta": {"divergence": "KL"}, "transport":  {"regularization":  "entropy"}}
+        ],
+        [
+          {"meta": {"regularization": 0.005}, "transport": {"coeff": 0.005}}
+        ]
+      ]
+    },
+    {"todo":  "all_combinations",
+      "items":  [
+        [
+          {"meta": {"task": "superres"}, "source": {"data": {"dataset":  "CELEBA-32px-even"}}},
+          {"meta": {"task": "identity"}, "source": {"data": {"dataset":  "CELEBA-even"}}}
+        ],
+        [
+          {"meta": {"divergence": "X2"}, "transport":  {"regularization":  "l2"}}
+        ],
+        [
+          {"meta": {"regularization": 0.001}, "transport": {"coeff": 0.001}}
+        ]
+      ]
+    }
+  ]
+}

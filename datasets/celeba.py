@@ -3,7 +3,7 @@ import os
 import PIL
 from .vision import VisionDataset
 from .utils import download_file_from_google_drive, check_integrity
-
+import numpy as np
 
 class CelebA(VisionDataset):
     """`Large-scale CelebFaces Attributes (CelebA) Dataset <http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html>`_ Dataset.
@@ -51,6 +51,7 @@ class CelebA(VisionDataset):
                  split="train",
                  target_type="attr",
                  transform=None, target_transform=None,
+                 subset="all",
                  download=False):
         import pandas
         super(CelebA, self).__init__(root)
@@ -71,6 +72,7 @@ class CelebA(VisionDataset):
 
         self.transform = transform
         self.target_transform = target_transform
+
 
         if split.lower() == "train":
             split = 0
@@ -98,6 +100,13 @@ class CelebA(VisionDataset):
             self.attr = pandas.read_csv(f, delim_whitespace=True, header=1)
 
         mask = (splits[1] == split)
+        idxs = np.arange(len(mask))
+
+        if(subset == "even"):
+            mask = np.logical_and(mask, (idxs % 2))
+        elif(subset == "odd"):
+            mask = np.logical_and(mask, 1-(idxs % 2))
+
         self.filename = splits[mask].index.values
         self.identity = torch.as_tensor(self.identity[mask].values)
         self.bbox = torch.as_tensor(self.bbox[mask].values)

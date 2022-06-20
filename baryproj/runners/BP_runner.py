@@ -74,11 +74,10 @@ class BPRunner():
 
                 obj = bp_opt.step(lambda: self._bp_closure(Xs, Xt, cpat, baryproj, bp_opt))
 
-                obj_val = round(obj.item(), 5)
                 progress.update(1)
-                progress.set_description_str(f"L2 Error: {obj_val}")
+                progress.set_description_str("L2 Error: {:.4e}".format(obj.item()))
                 self.config.tb_logger.add_scalars('Optimization', {
-                    'Objective': obj_val
+                    'Objective': obj.item()
                 }, d_step)
 
                 if(d_step % self.config.training.sample_freq == 0):
@@ -101,9 +100,10 @@ class BPRunner():
     def _bp_closure(self, Xs, Xt, cpat, bp, bp_opt):
         bp_opt.zero_grad()
         dx = cpat(Xs, Xt)
+        nnz = (dx > 1e-20).flatten()
         Xt_hat = bp(Xs)
-        transport_cost = ((Xt - Xt_hat)**2).flatten(start_dim=1)
-        cost = torch.mean(transport_cost, dim=1, keepdim=True) * dx
+        transport_cost = ((Xt[nnz] - Xt_hat[nnz])**2).flatten(start_dim=1)
+        cost = torch.mean(transport_cost, dim=1, keepdim=True) * dx[nnz]
         obj = torch.mean(cost)
         obj.backward()
         return obj
@@ -158,7 +158,7 @@ class BPRunner():
             data_iter = iter(dataloader)
 
             img_id = 0
-            for _ in tqdm(range(n_rounds), desc='Generating image samples for FID/inception score evaluation'):
+            for _ in tqdm(range(n_rounds), desc='Generating image samples for FID/inception score evaluation.'):
                 with torch.no_grad():
                     (Xs, _) = next(data_iter)
                     Xs = data_transform(self.config.source, Xs).to(self.config.device)

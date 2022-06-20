@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class ReLU_MLP(nn.Module):
-    def __init__(self, layer_dims, output="linear", layernorm=False):
+    def __init__(self, layer_dims, output="linear", bias=True, layernorm=False):
         '''
         A generic ReLU MLP network.
 
@@ -17,13 +17,13 @@ class ReLU_MLP(nn.Module):
         for i in range(1, len(layer_dims) - 1):
             if (layernorm and i != 1):
                 layers.append(nn.LayerNorm(layer_dims[i - 1]))
-            layers.append(nn.Linear(layer_dims[i - 1], layer_dims[i]))
+            layers.append(nn.Linear(layer_dims[i - 1], layer_dims[i], bias=bias))
             layers.append(nn.ReLU(layer_dims[i - 1]))
         if (output == "sigmoid"):
-            layers.append(nn.Linear(layer_dims[-2], layer_dims[-1]))
+            layers.append(nn.Linear(layer_dims[-2], layer_dims[-1], bias=bias))
             layers.append(nn.Sigmoid())
         if (output == "linear"):
-            layers.append(nn.Linear(layer_dims[-2], layer_dims[-1]))
+            layers.append(nn.Linear(layer_dims[-2], layer_dims[-1], bias=bias))
 
         self.layers = layers
         self.out = nn.Sequential(*layers)

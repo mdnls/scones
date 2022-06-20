@@ -10,7 +10,7 @@ from datasets import get_dataset
 from tqdm import tqdm
 import os
 from datasets import data_transform
-
+import numpy as np
 
 class CpatRunner():
     def __init__(self, args, config):
@@ -64,7 +64,7 @@ class CpatRunner():
                 obj_val = round(obj.item(), 5)
                 avg_density_val = round(avg_density.item(), 5)
                 progress.update(1)
-                progress.set_description_str(f"Average Density: {avg_density_val}")
+                progress.set_description_str(f"Objective: {obj_val}. Average Density: {avg_density_val}")
                 self.config.tb_logger.add_scalars('Optimization', {
                     'Objective': obj_val,
                     'Average Density': avg_density_val
@@ -89,3 +89,11 @@ class CpatRunner():
         (-obj).backward() # for gradient ascent rather than descent
         return obj
 
+    def cov_est(self, Xs, Xt, cpat):
+        source_dim = self.config.source.data.dim
+        target_dim = self.config.target.data.dim
+        density = cpat.density(Xs, Xt).view((-1, 1, 1))
+        joint = torch.cat((Xs.view((-1, source_dim, 1)), Xt.view((-1, target_dim, 1))), dim=1)
+        covs = joint @ joint.transpose(1, 2)
+        est = torch.mean(density * covs, dim=0)
+        return est

@@ -1,0 +1,89 @@
+baryproj:
+  ckpt_id: null
+  log_path: pretrained/baryproj/camera_ready/superres_X2_0.01
+  model:
+    architecture: res
+    ngf: 48
+    nonlinearity: elu
+    normalization: InstanceNorm++
+compatibility:
+  beta: 10
+  ckpt_id: null
+  log_path: pretrained/compatibility/camera_ready/superres_X2_0.01
+  model:
+    architecture: fcn
+    hidden_layers:
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+    - 2048
+meta:
+  divergence: X2
+  regularization: 0.01
+  task: superres
+ncsn:
+  fast_fid:
+    batch_size: 1000
+    begin_ckpt: 5000
+    end_ckpt: 210000
+    ensemble: false
+    n_steps_each: 5
+    num_sources: 1000
+    step_lr: 3.3e-06
+    verbose: false
+  model:
+    ema: true
+    ema_rate: 0.999
+    ngf: 128
+    nonlinearity: elu
+    normalization: InstanceNorm++
+    num_classes: 500
+    sigma_begin: 9
+    sigma_dist: geometric
+    sigma_end: 0.01
+    spec_norm: false
+  sampling:
+    ckpt_id: 210000
+    data_init: true
+    denoise: true
+    fid: true
+    final_only: true
+    inpainting: false
+    interpolation: false
+    log_path: pretrained/ncsn/celeba
+    n_interpolations: 15
+    n_steps_each: 5
+    num_samples4fid: 5000
+    samples_per_source: 1
+    sources_per_batch: 250
+    step_lr: 1.5e-06
+source:
+  data:
+    channels: 3
+    dataset: CELEBA-32px-even
+    gaussian_dequantization: false
+    image_size: 64
+    logit_transform: false
+    num_workers: 4
+    random_flip: true
+    rescaled: false
+    uniform_dequantization: false
+target:
+  data:
+    channels: 3
+    dataset: CELEBA-odd
+    gaussian_dequantization: false
+    image_size: 64
+    logit_transform: false
+    num_workers: 4
+    random_flip: true
+    rescaled: false
+    uniform_dequantization: false
+transport:
+  coeff: 0.01
+  cost: mean-l2-sq
+  regularization: l2

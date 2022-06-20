@@ -37,6 +37,9 @@ class Compatibility(nn.Module):
         if(config.transport.regularization == "entropy"):
             self.penalty_fn = lambda x, y: r * torch.exp((1/r)*self._violation(x, y) - 1)
             self.compatibility_fn = lambda x, y: torch.exp((1/r)*self._violation(x, y) - 1)
+        elif (config.transport.regularization == "cuturi-entropy"):
+            self.penalty_fn = lambda x, y: r*(torch.exp((1 / r) * self._violation(x, y))-1)
+            self.compatibility_fn = lambda x, y: torch.exp((1 / r) * self._violation(x, y))
         elif(config.transport.regularization == "l2"):
             self.penalty_fn = lambda x, y: (1/(4*r)) * torch.relu(self._violation(x, y))**2
             self.compatibility_fn = lambda x, y: (1/(2*r)) * torch.relu(self._violation(x, y))
@@ -72,13 +75,13 @@ class Compatibility(nn.Module):
     def score(self, x, y):
         # For H(x, y) a compatibility function, this method computes grad_y log H(x, y) for a fixed x and y.
         reg_type = self.config.transport.regularization
-        cost = self.config.transport.cost
         temp = 1 / self.config.transport.coeff
+        cost = self.config.transport.cost
         if (reg_type == "entropy" and cost in ["l2-sq", "mean-l2-sq"]):
             target_p_grad = torch.cat(torch.autograd.grad(outputs=list(self.outp_density_param(y)), inputs=[y]), dim=1)
             scale = 2 if (cost == "l2-sq") else 2 / np.prod(y.shape[1:])
             transport_grad = temp * (target_p_grad + scale * (x - y))
-        elif(reg_type == "entropy"):
+        elif(reg_type == "entropy" or reg_type == "cuturi-entropy"):
             cpat_fn = lambda x, y: temp * self._violation(x, y)
             transport_grad = torch.cat(torch.autograd.grad(outputs=list(cpat_fn(x, y)), inputs=[y]), dim=1)
         elif(reg_type == "l2"):
@@ -91,3 +94,12 @@ class Compatibility(nn.Module):
 
         return transport_grad
 
+    def density(self, x, y):
+        reg_type = self.config.transport.regularization
+        temp = 1 / self.config.transport.coeff
+        if (reg_type == "entropy"):
+            return torch.exp(temp * self._violation(x, y) - 1)
+        elif(reg_type == "cuturi-entropy"):
+            return torch.exp(temp * self._violation(x, y))
+        elif(reg_type == "l2"):
+            raise NotImplementedError()

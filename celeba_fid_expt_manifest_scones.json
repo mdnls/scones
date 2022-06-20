@@ -1,0 +1,62 @@
+{
+  "manifest": [
+    {
+      "todo":  "all_combinations",
+      "items": [
+        [
+          {"meta": {"task": "superres"}, "source": {"data": {"dataset":  "CELEBA-32px-even"}}},
+          {"meta": {"task": "identity"}, "source": {"data": {"dataset":  "CELEBA-even"}}}
+        ],
+        [
+          {"meta": {"divergence": "KL"}, "transport":  {"regularization":  "entropy"}}
+        ],
+        [
+          {"meta": {"regularization": 0.1}, "transport": {"coeff": 0.1}},
+          {"meta": {"regularization": 0.01}, "transport": {"coeff": 0.01}}
+        ]
+      ],
+      "instance": {"compatibility":  {"log_path": "pretrained/compatibility/camera_ready/{task}_{divergence}_{regularization}"},
+                   "baryproj": {"log_path":  "pretrained/baryproj/camera_ready/{task}_{divergence}_{regularization}"}
+      }
+    },
+    {"todo":  "all_combinations",
+    "items":  [
+        [
+          {"meta": {"task": "superres"}, "source": {"data": {"dataset":  "CELEBA-32px-even"}}},
+          {"meta": {"task": "identity"}, "source": {"data": {"dataset":  "CELEBA-even"}}}
+        ],
+        [
+          {"meta": {"divergence": "KL", "regularization":  0.005},
+           "transport":  {"regularization":  "entropy", "coeff":  0.005},
+           "ncsn": {"sampling": {"step_lr": 0.000001, "n_steps_each": 7}}}
+        ]
+      ],
+      "instance": {"compatibility":  {"log_path": "pretrained/compatibility/camera_ready/{task}_{divergence}_{regularization}"},
+                   "baryproj": {"log_path":  "pretrained/baryproj/camera_ready/{task}_{divergence}_{regularization}"}
+      }
+    },
+    {
+      "todo":  "all_combinations",
+      "items": [
+        [
+          {"meta": {"task": "superres"}, "source": {"data": {"dataset":  "CELEBA-32px-even"}}},
+          {"meta": {"task": "identity"}, "source": {"data": {"dataset":  "CELEBA-even"}}}
+        ],
+        [
+          {"meta": {"divergence": "X2"},
+           "transport":  {"regularization":  "l2"},
+           "compatibility": {"beta": 10},
+           "ncsn": {"model": {"sigma_begin":  9}}}
+        ],
+        [
+          {"meta": {"regularization": 0.1}, "transport": {"coeff": 0.1}},
+          {"meta": {"regularization": 0.01}, "transport": {"coeff": 0.01}},
+          {"meta": {"regularization": 0.001}, "transport": {"coeff": 0.001}}
+        ]
+      ],
+      "instance": {"compatibility":  {"log_path": "pretrained/compatibility/camera_ready/{task}_{divergence}_{regularization}"},
+        "baryproj": {"log_path":  "pretrained/baryproj/camera_ready/{task}_{divergence}_{regularization}"}
+      }
+    }
+  ]
+}

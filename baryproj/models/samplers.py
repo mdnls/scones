@@ -8,6 +8,11 @@ from datasets import data_transform
 
 # so, do you like jazz?
 def get_bary(config):
+    if(config.target.data.dataset.upper() in ["GAUSSIAN", "GAUSSIAN-HD"]):
+        source_dim = config.source.data.dim
+        target_dim = config.target.data.dim
+        layers = [source_dim] + config.model.hidden_layers + [target_dim]
+        return ReLU_MLP(layer_dims=layers, layernorm=False).to(config.device)
     if(config.model.architecture == "conv"):
         return ImageSampler(
             input_im_size=config.source.data.image_size,
